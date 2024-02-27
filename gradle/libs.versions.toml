@@ -1,0 +1,27 @@
+[versions]
+kotlin = "1.8.0"
+shadow = "8.1.1"
+log4j = "2.20.0"
+grpcVersion = "1.61.0"
+grpcKotlinVersion = "1.4.1"
+
+[libraries]
+kotlinJvm = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
+kotlinTest = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+log4jCore = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
+log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
+log4jSlf4j = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j" }
+grpcStub = { module = "io.grpc:grpc-stub", version.ref = "grpcVersion" }
+grpcKotlinStub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpcKotlinVersion" }
+grpcNettyShaded = { module = "io.grpc:grpc-netty-shaded", version.ref = "grpcVersion" }
+
+[bundles]
+log4j = [
+    "log4jCore",
+    "log4jApi",
+    "log4jSlf4j"
+]
+
+[plugins]
+kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
