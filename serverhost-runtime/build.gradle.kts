@@ -21,5 +21,5 @@ dependencies {
 }
 
 application {
-    mainClass = "app.simplecloud.droplet.serverhost.runtime.LauncherKt"
+    mainClass = "app.simplecloud.droplet.serverhost.runtime.launcher.LauncherKt"
 }
