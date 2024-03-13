@@ -1,16 +1,42 @@
 package app.simplecloud.droplet.serverhost.runtime.host
 
+import app.simplecloud.controller.shared.group.Group
+import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.proto.*
+import app.simplecloud.controller.shared.status.ApiResponse
+import app.simplecloud.droplet.serverhost.shared.server.ServerFactory
 import io.grpc.stub.StreamObserver
 
-class ServerHostService() : ServerHostServiceGrpc.ServerHostServiceImplBase() {
+class ServerHostService(
+    private val serverHost: ServerHost,
+    private val runner: ServerRunner,
+) : ServerHostServiceGrpc.ServerHostServiceImplBase() {
 
-    override fun startServer(request: GroupDefinition, responseObserver: StreamObserver<ServerDefinition>) {
-        TODO("Not implemented yet")
+    override fun startServer(request: StartServerRequest, responseObserver: StreamObserver<ServerDefinition>) {
+        val group = Group.fromDefinition(request.group)
+        val server = ServerFactory.builder()
+            .setHost(serverHost)
+            .setGroup(group)
+            .setNumericalId(request.numericalId.toLong()).build()
+        try {
+            if(!runner.startServer(server)) {
+                responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))
+                responseObserver.onCompleted()
+                return
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            responseObserver.onError(ServerHostStartException(server, "An internal error occurred."))
+            responseObserver.onCompleted()
+            return
+        }
+        responseObserver.onNext(server.toDefinition())
+        responseObserver.onCompleted()
     }
 
     override fun stopServer(request: ServerIdRequest, responseObserver: StreamObserver<StatusResponse>) {
-        TODO("Not implemented yet")
+        responseObserver.onNext(ApiResponse(if(runner.stopServer(request.id)) "success" else "error").toDefinition())
+        responseObserver.onCompleted()
     }
 
 }

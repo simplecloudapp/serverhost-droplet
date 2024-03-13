@@ -14,6 +14,13 @@ allprojects {
 
     repositories {
         mavenCentral()
+        maven {
+            url = URI.create("https://maven.pkg.github.com/thesimplecloud/simplecloud-controller")
+            credentials {
+                username = (findProperty("gpr.user") ?: System.getenv("USERNAME") ?: "").toString()
+                password = (findProperty("gpr.key") ?: System.getenv("TOKEN") ?: "").toString()
+            }
+        }
     }
 }
 

@@ -1,23 +1,16 @@
-import java.net.URI
 
 plugins {
     application
 }
 
-repositories {
-    maven {
-        url = URI.create("https://maven.pkg.github.com/thesimplecloud/simplecloud-controller")
-        credentials {
-            username = (findProperty("gpr.user") ?: System.getenv("USERNAME") ?: "").toString()
-            password = (findProperty("gpr.key") ?: System.getenv("TOKEN") ?: "").toString()
-        }
-    }
-}
 
 dependencies {
     api(project(":serverhost-shared"))
     implementation(rootProject.libs.bundles.log4j)
-    implementation("app.simplecloud.controller:controller-shared:1.0-SNAPSHOT")
+    api("app.simplecloud.controller:controller-shared:1.0.6-SNAPSHOT")
+    api("org.spongepowered:configurate-yaml:4.0.0")
+    api("org.spongepowered:configurate-extra-kotlin:4.1.2")
+    api("commons-io:commons-io:2.15.1")
 }
 
 application {
