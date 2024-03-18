@@ -10,10 +10,10 @@ import java.io.File
 open class YamlGroupConfig(dirPath: String) : YamlConfig(dirPath) {
 
     inline fun <reified T> load(group: Group): T? {
-        return load(group.name)
+        return load(group.name + ".yml")
     }
 
     fun <T> save(group: Group, obj: T) {
-        save(group.name, obj)
+        save(group.name + ".yml", obj)
     }
 }

@@ -16,7 +16,6 @@ class PortProcessHandle {
                     pattern = Pattern.compile("\\s*TCP\\s+\\S+:(\\d+)\\s+\\S+:(\\d+)\\s+\\S+\\s+(\\d+)")
                     pidIndex = 3
                 }
-
                 OS.UNIX -> {
                     command = "bash -c lsof -i :$port"
                     pattern = Pattern.compile("\\S+\\s+(\\d+)\\s+.*:$port")

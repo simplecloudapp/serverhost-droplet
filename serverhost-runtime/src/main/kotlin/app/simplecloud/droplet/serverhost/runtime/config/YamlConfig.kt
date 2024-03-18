@@ -13,7 +13,7 @@ open class YamlConfig(private val dirPath: String) {
     }
 
     fun buildNode(path: String?): Pair<CommentedConfigurationNode, YamlConfigurationLoader> {
-        val file = File(if (path != null) "${dirPath}/${path.lowercase()}.yml" else dirPath)
+        val file = File(if (path != null) "${dirPath}/${path.lowercase()}" else dirPath)
         if (!file.exists()) {
             file.parentFile.mkdirs()
             file.createNewFile()
