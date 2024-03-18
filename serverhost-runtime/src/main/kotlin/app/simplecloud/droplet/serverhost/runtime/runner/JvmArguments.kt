@@ -8,14 +8,3 @@ data class JvmArguments(
     val options: List<String>?,
     val arguments: List<String>?,
 )
-
-/**
- *
- * example.yml
- *
- * executable: C:/test/java/bin/java
- * options:
- *      - '-Dcom.minecraft.eula=true'
- * arguments:
- *      - 'nogui'
- */

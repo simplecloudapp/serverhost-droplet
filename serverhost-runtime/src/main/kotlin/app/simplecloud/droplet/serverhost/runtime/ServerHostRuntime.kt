@@ -1,27 +1,33 @@
 package app.simplecloud.droplet.serverhost.runtime
 
-import app.simplecloud.controller.shared.host.ServerHost
+import app.simplecloud.droplet.serverhost.runtime.controller.Attacher
+import app.simplecloud.droplet.serverhost.runtime.host.ServerHostConfig
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
-import app.simplecloud.droplet.serverhost.runtime.host.ServerRunner
+import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
+import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import org.apache.logging.log4j.LogManager
-import java.net.InetAddress
-import java.util.*
 import kotlin.concurrent.thread
 
 class ServerHostRuntime {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
-    private val serverHost = ServerHost(System.getenv("ID") ?: UUID.randomUUID().toString(), InetAddress.getLocalHost().hostAddress, System.getenv("GRPC_PORT")?.toInt() ?: 5820)
+    private val serverHost = ServerHostConfig.load("config.yml")
     private val serverLoader = ServerVersionLoader()
-    private val runner = ServerRunner(serverLoader)
+    private val templateCopier = TemplateCopier()
+    private val runner = ServerRunner(serverLoader, templateCopier)
     private val server = createGrpcServerFromEnv()
 
     fun start() {
+        if (serverHost == null) {
+            logger.error("This ServerHost is unusable, since no config was provided.")
+            return
+        }
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
+        attach()
     }
 
     private fun startGrpcServer() {
@@ -32,10 +38,16 @@ class ServerHostRuntime {
         }
     }
 
+    private fun attach() {
+        logger.info("Attaching to controller...")
+        val attacher = Attacher(serverHost!!)
+        attacher.enforceAttach()
+    }
+
     private fun createGrpcServerFromEnv(): Server {
-        return ServerBuilder.forPort(serverHost.port)
-                .addService(ServerHostService(serverHost, runner))
-                .build()
+        return ServerBuilder.forPort(serverHost!!.port)
+            .addService(ServerHostService(serverHost, runner))
+            .build()
     }
 
 }

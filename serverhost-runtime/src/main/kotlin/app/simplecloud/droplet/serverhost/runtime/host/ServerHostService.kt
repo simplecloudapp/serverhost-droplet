@@ -3,7 +3,9 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.proto.*
+import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.controller.shared.status.ApiResponse
+import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.shared.server.ServerFactory
 import io.grpc.stub.StreamObserver
 
@@ -19,23 +21,26 @@ class ServerHostService(
             .setGroup(group)
             .setNumericalId(request.numericalId.toLong()).build()
         try {
-            if(!runner.startServer(server)) {
+            if (!runner.startServer(server)) {
                 responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))
-                responseObserver.onCompleted()
                 return
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             responseObserver.onError(ServerHostStartException(server, "An internal error occurred."))
-            responseObserver.onCompleted()
+            e.printStackTrace()
             return
         }
         responseObserver.onNext(server.toDefinition())
         responseObserver.onCompleted()
     }
 
-    override fun stopServer(request: ServerIdRequest, responseObserver: StreamObserver<StatusResponse>) {
-        responseObserver.onNext(ApiResponse(if(runner.stopServer(request.id)) "success" else "error").toDefinition())
+    override fun stopServer(request: ServerDefinition, responseObserver: StreamObserver<StatusResponse>) {
+        responseObserver.onNext(ApiResponse(if (runner.stopServer(Server.fromDefinition(request))) "success" else "error").toDefinition())
+        responseObserver.onCompleted()
+    }
+
+    override fun reattachServer(request: ServerDefinition, responseObserver: StreamObserver<StatusResponse>) {
+        responseObserver.onNext(ApiResponse(if (runner.reattachServer(Server.fromDefinition(request))) "success" else "error").toDefinition())
         responseObserver.onCompleted()
     }
 
