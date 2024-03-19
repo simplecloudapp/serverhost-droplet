@@ -1,0 +1,9 @@
+paths:
+  - velocity.toml:
+    type: "TOML"
+    data:
+      bind: "%ip%:%port%"
+      player-info-forwarding-mode: "MODERN"
+  - forwarding.secret:
+    type: "TXT"
+    data: "%forwarding_secret%"

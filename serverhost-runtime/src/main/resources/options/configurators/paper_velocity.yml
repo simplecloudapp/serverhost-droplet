@@ -1,0 +1,11 @@
+dependsOn:
+  - "spigot"
+paths:
+  - paper-global.yml:
+    type: "YML"
+    data:
+      proxies:
+        velocity:
+          enabled: "true"
+          online-mode: "true"
+          secret: "%forwarding_secret%"

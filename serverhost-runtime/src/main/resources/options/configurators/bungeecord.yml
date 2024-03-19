@@ -1,0 +1,7 @@
+paths:
+  - config.yml:
+    type: "YML"
+    data:
+      listeners:
+        - query_port: "%port%"
+          host: "%ip%:%port%"
