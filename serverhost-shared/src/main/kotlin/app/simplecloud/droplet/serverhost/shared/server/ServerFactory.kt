@@ -35,11 +35,16 @@ class ServerFactory {
         this.numericalId = numericalId
         return this
     }
+    private var port by Delegates.notNull<Long>()
+    fun setPort(port: Long): ServerFactory {
+        this.port = port
+        return this
+    }
 
     fun build(): Server {
         return Server(
             uniqueId = UUID.randomUUID().toString().replace("-", ""),
-            port = group.startPort + numericalId - 1,
+            port = port,
             group = group.name,
             minMemory = group.minMemory,
             maxMemory = group.maxMemory,
@@ -50,7 +55,8 @@ class ServerFactory {
             playerCount = 0,
             templateId = "",
             properties = mutableMapOf(
-                "serverUrl" to group.serverUrl
+                "serverUrl" to group.serverUrl,
+                *group.properties.entries.map { it.key to it.value }.toTypedArray()
             )
         )
     }

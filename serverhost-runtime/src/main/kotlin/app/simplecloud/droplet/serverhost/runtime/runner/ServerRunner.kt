@@ -2,6 +2,7 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
+import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
@@ -12,6 +13,7 @@ import java.nio.file.Files
 
 class ServerRunner(
     private val serverVersionLoader: ServerVersionLoader,
+    private val serverConfigurator: ServerConfiguratorExecutor,
     private val templateCopier: TemplateCopier,
 ) {
 
@@ -26,7 +28,7 @@ class ServerRunner(
         val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
 
         fun getServerDir(server: Server): File {
-            return getServerDir(server, GroupRuntime.Config.load(server.group))
+            return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>(server.group))
         }
 
         private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
@@ -49,6 +51,7 @@ class ServerRunner(
         if (!builder.directory().exists()) builder.directory().mkdirs()
         templateCopier.copy(server, TemplateActionType.DEFAULT)
         templateCopier.copy(server, TemplateActionType.RANDOM)
+        serverConfigurator.configurate(server)
         val process = builder.start()
         running[server.uniqueId] = process.toHandle()
         logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")

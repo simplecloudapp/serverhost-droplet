@@ -1,5 +1,6 @@
 package app.simplecloud.droplet.serverhost.runtime
 
+import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.controller.Attacher
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostConfig
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
@@ -17,7 +18,8 @@ class ServerHostRuntime {
     private val serverHost = ServerHostConfig.load("config.yml")
     private val serverLoader = ServerVersionLoader()
     private val templateCopier = TemplateCopier()
-    private val runner = ServerRunner(serverLoader, templateCopier)
+    private val configurator = ServerConfiguratorExecutor()
+    private val runner = ServerRunner(serverLoader, configurator, templateCopier)
     private val server = createGrpcServerFromEnv()
 
     fun start() {
@@ -28,6 +30,7 @@ class ServerHostRuntime {
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
         attach()
+        configurator.copyDefaults()
     }
 
     private fun startGrpcServer() {

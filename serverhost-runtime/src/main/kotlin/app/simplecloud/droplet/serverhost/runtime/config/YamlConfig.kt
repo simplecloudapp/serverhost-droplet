@@ -1,10 +1,12 @@
 package app.simplecloud.droplet.serverhost.runtime.config
 
 import org.spongepowered.configurate.CommentedConfigurationNode
+import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
+import java.util.Scanner
 
 open class YamlConfig(private val dirPath: String) {
 
@@ -33,11 +35,20 @@ open class YamlConfig(private val dirPath: String) {
         return node.get<T>()
     }
 
+
+    fun load(yml: String): ConfigurationNode {
+        return YamlConfigurationLoader.builder().buildAndLoadString(yml)
+    }
+
+    fun toTemplatedString(node: ConfigurationNode): String {
+        return YamlConfigurationLoader.builder().buildAndSaveString(node)
+    }
+
     fun <T> save(obj: T) {
         save(null, obj)
     }
 
-    fun <T> save(path: String?, obj: T) {
+    open fun <T> save(path: String?, obj: T) {
         val pair = buildNode(path)
         pair.first.set(obj)
         pair.second.save(pair.first)

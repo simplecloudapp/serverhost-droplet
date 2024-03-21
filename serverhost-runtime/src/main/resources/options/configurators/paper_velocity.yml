@@ -1,7 +1,7 @@
 dependsOn:
   - "spigot"
 paths:
-  - paper-global.yml:
+  - path: "paper-global.yml"
     type: "YML"
     data:
       proxies:
