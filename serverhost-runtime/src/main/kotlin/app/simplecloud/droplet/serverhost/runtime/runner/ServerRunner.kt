@@ -23,7 +23,7 @@ class ServerRunner(
 
     companion object {
 
-        val DEFAULT_OPTIONS = listOf("-Dcom.mojang.eula.agree=true")
+        val DEFAULT_OPTIONS = listOf("-Dcom.mojang.eula.agree=true -jar")
         val DEFAULT_ARGUMENTS = listOf("nogui")
         val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
 
@@ -101,7 +101,6 @@ class ServerRunner(
         val command = mutableListOf<String>()
         command.add(args.executable ?: DEFAULT_EXECUTABLE)
         if (!args.options.isNullOrEmpty()) command.addAll(args.options)
-        command.add("-jar")
         command.add(serverVersionLoader.getServerJar(server).absolutePath)
         if (!args.arguments.isNullOrEmpty()) command.addAll(args.arguments)
         return ProcessBuilder()
