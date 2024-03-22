@@ -19,7 +19,9 @@ class ServerHostService(
         val server = ServerFactory.builder()
             .setHost(serverHost)
             .setGroup(group)
-            .setNumericalId(request.numericalId.toLong()).build()
+            .setNumericalId(request.numericalId.toLong())
+            .setPort(request.port.toLong())
+            .build()
         try {
             if (!runner.startServer(server)) {
                 responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))

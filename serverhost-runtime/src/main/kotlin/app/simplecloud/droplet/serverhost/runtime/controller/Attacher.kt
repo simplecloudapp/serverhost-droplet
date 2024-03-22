@@ -4,6 +4,7 @@ import app.simplecloud.controller.shared.future.toCompletable
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.proto.ControllerServerServiceGrpc
 import app.simplecloud.controller.shared.status.ApiResponse
+import io.grpc.CallCredentials
 import io.grpc.ConnectivityState
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
@@ -16,7 +17,8 @@ class Attacher(private val serverHost: ServerHost) {
     private fun createControllerChannel(): ManagedChannel {
         val port = System.getenv("GRPC_PORT")?.toInt() ?: 5816
         val host = System.getenv("GRPC_HOST") ?: "localhost"
-        return ManagedChannelBuilder.forAddress(host, port).usePlaintext().build()
+        return ManagedChannelBuilder.forAddress(host, port).usePlaintext()
+            .build()
     }
 
     private val channel = createControllerChannel()

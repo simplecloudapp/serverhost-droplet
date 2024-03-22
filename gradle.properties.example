@@ -1,6 +1,0 @@
-# Remove .example from the file name and enter real information to be able to fetch the needed packages.
-
-# DO NOT COMMIT THIS FILE IF IT DOES NOT END WITH .example
-
-gpr.user=username
-gpr.key=github_private_key

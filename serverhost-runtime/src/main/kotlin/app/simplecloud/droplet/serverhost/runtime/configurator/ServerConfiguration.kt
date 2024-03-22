@@ -45,9 +45,7 @@ object ServerConfiguratorPlaceholderMapper {
     }
     fun map(templatedString: String, server: Server): String {
         var result = templatedString
-        val list = toTemplateList(server)
-        println(list)
-        for((template, value) in list) {
+        for((template, value) in toTemplateList(server)) {
             result = result.replace("%$template%", value.toString())
         }
         return result
@@ -57,11 +55,11 @@ class ServerConfiguratorExecutor {
     fun configurate(server: Server): Boolean {
         val configurator = server.properties["configurator"] ?: return false
         val configLoader = YamlConfig("options/configurators")
-        val config = configLoader.load<ServerConfiguration>("$configurator.yml") ?: return false
+        val content = configLoader.loadFile("$configurator.yml") ?: return false
+        val mappedContent = ServerConfiguratorPlaceholderMapper.map(templatedString = content, server = server)
+        val config = configLoader.loadYaml<ServerConfiguration>(mappedContent) ?: return false
         config.operations.forEach {
-            val mapped = ServerConfiguratorPlaceholderMapper.map(templatedString = configLoader.toTemplatedString(it.data), server = server)
-            val mappedConfig = configLoader.load(mapped) ?: return false
-            val data = it.type.configurator.load(mappedConfig) ?: return false
+            val data = it.type.configurator.load(it.data) ?: return false
             it.type.configurator.save(data, File(ServerRunner.getServerDir(server), it.path))
         }
         return true

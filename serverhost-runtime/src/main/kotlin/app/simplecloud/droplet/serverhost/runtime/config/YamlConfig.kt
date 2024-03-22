@@ -3,6 +3,7 @@ package app.simplecloud.droplet.serverhost.runtime.config
 import org.spongepowered.configurate.CommentedConfigurationNode
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
+import org.spongepowered.configurate.kotlin.objectMapper
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
@@ -35,9 +36,26 @@ open class YamlConfig(private val dirPath: String) {
         return node.get<T>()
     }
 
-
     fun load(yml: String): ConfigurationNode {
         return YamlConfigurationLoader.builder().buildAndLoadString(yml)
+    }
+
+    inline fun <reified T> loadYaml(yml: String): T? {
+        val node = YamlConfigurationLoader.builder().buildAndLoadString(yml)
+        return objectMapper<T>().load(node)
+    }
+
+    fun loadFile(file: File): String? {
+        if(!file.exists()) return null
+        val scanner = Scanner(file)
+        var result = ""
+        while(scanner.hasNextLine())result += "${scanner.nextLine()}\n"
+        return result
+    }
+
+    fun loadFile(path: String): String? {
+        val file = File(dirPath, path)
+        return loadFile(file)
     }
 
     fun toTemplatedString(node: ConfigurationNode): String {

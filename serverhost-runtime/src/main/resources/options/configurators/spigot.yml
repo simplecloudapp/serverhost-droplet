@@ -3,6 +3,6 @@ paths:
     type: "PROPERTIES"
     data:
       server-ip: "%ip%"
-      server-port: "%port%"
-      max-players: "%max-players%"
-      online-mode: "false"
+      server-port: %port%
+      max-players: %max-players%
+      online-mode: false

@@ -3,5 +3,5 @@ paths:
     type: "YML"
     data:
       listeners:
-        - query_port: "%port%"
+        - query_port: %port%
           host: "%ip%:%port%"

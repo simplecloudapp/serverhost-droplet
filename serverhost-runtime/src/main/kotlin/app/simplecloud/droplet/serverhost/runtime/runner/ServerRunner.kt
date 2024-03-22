@@ -23,16 +23,18 @@ class ServerRunner(
 
     companion object {
 
-        val DEFAULT_OPTIONS = listOf("-Dcom.mojang.eula.agree=true -jar")
+        val DEFAULT_OPTIONS = listOf("-Dcom.mojang.eula.agree=true", "-jar")
         val DEFAULT_ARGUMENTS = listOf("nogui")
         val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
 
         fun getServerDir(server: Server): File {
-            return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>(server.group))
+            return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
         }
 
         private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
-            return File(if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "running/${server.group}/${server.group}-${server.numericalId}")
+            var basicUrl = if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
+            if(!basicUrl.startsWith("/")) basicUrl = "${ServerRunnerPlaceholders.RUNNING_PATH}/$basicUrl"
+            return File(basicUrl)
         }
     }
 
@@ -47,11 +49,16 @@ class ServerRunner(
             return false
         }
         serverVersionLoader.download(server)
-        val builder = buildProcess(server, runtimeConfig)
+        val builder = buildProcess(server, runtimeConfig).inheritIO()
+        println(builder.command())
         if (!builder.directory().exists()) builder.directory().mkdirs()
         templateCopier.copy(server, TemplateActionType.DEFAULT)
         templateCopier.copy(server, TemplateActionType.RANDOM)
-        serverConfigurator.configurate(server)
+        if(!serverConfigurator.configurate(server)) {
+            logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
+            Files.delete(getServerDir(server).toPath())
+            return false
+        }
         val process = builder.start()
         running[server.uniqueId] = process.toHandle()
         logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
