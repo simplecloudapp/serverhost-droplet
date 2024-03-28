@@ -41,7 +41,11 @@ open class YamlConfig(private val dirPath: String) {
     }
 
     inline fun <reified T> loadYaml(yml: String): T? {
-        val node = YamlConfigurationLoader.builder().buildAndLoadString(yml)
+        val node = YamlConfigurationLoader.builder().defaultOptions {
+            it.serializers {builder ->
+                builder.registerAnnotatedObjects(objectMapperFactory())
+            }
+        }.buildAndLoadString(yml)
         return objectMapper<T>().load(node)
     }
 

@@ -12,7 +12,7 @@ import java.nio.file.Files
 class ShutdownTemplateExecutor : TemplateActionExecutor {
     override fun execute(action: TemplateAction, server: Server): Boolean {
         try {
-            val fromPath = TemplatePlaceholders.parsePath(action.copyFrom, ServerRunnerPlaceholders.RUNNING_PATH)
+            val fromPath = TemplatePlaceholders.parsePath(action.copyFrom, "")
             val toPath = TemplatePlaceholders.parsePath(action.copyTo, TemplatePlaceholders.TEMPLATE_PATH)
             val to = File(TemplatePlaceholders.parse(toPath, server))
             val from = File(ServerRunner.getServerDir(server), TemplatePlaceholders.parse(fromPath, server))

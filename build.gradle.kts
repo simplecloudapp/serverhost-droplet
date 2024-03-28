@@ -1,6 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.net.URI
 
 plugins {
     alias(libs.plugins.kotlin)
@@ -14,13 +13,7 @@ allprojects {
 
     repositories {
         mavenCentral()
-        maven {
-            url = URI.create("https://maven.pkg.github.com/thesimplecloud/simplecloud-controller")
-            credentials {
-                username = (findProperty("gpr.user") ?: System.getenv("USERNAME") ?: "").toString()
-                password = (findProperty("gpr.key") ?: System.getenv("TOKEN") ?: "").toString()
-            }
-        }
+        mavenLocal()
     }
 }
 

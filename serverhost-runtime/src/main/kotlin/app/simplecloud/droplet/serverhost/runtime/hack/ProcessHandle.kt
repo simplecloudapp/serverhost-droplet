@@ -5,6 +5,9 @@ import java.util.regex.Pattern
 
 class PortProcessHandle {
     companion object {
+
+        private val preBindPorts = mutableMapOf<Int, Long>()
+
         fun of(port: Int): Optional<ProcessHandle> {
             val os = OS.get() ?: return Optional.empty()
             val command: String
@@ -34,6 +37,18 @@ class PortProcessHandle {
                 }
             }
             return Optional.empty()
+        }
+
+        fun findNextFreePort(startPort: Int): Int {
+            var port = startPort
+            while(!of(port).isEmpty || System.currentTimeMillis() - preBindPorts.getOrDefault(port, 0) < 1000*30L) {
+                port++
+            }
+            return port
+        }
+
+        fun addPreBind(port: Int) {
+            preBindPorts[port] = System.currentTimeMillis()
         }
     }
 }

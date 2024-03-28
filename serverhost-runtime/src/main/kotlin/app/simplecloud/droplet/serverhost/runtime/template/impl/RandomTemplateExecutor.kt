@@ -14,7 +14,7 @@ class RandomTemplateExecutor : TemplateActionExecutor {
     override fun execute(action: TemplateAction, server: Server): Boolean {
         try {
             val fromPath = TemplatePlaceholders.parsePath(action.copyFrom, TemplatePlaceholders.TEMPLATE_PATH)
-            val toPath = TemplatePlaceholders.parsePath(action.copyTo, ServerRunnerPlaceholders.RUNNING_PATH)
+            val toPath = TemplatePlaceholders.parsePath(action.copyTo, "")
             val fromDir = File(TemplatePlaceholders.parse(fromPath, server))
             val childDirs = fromDir.listFiles() ?: return false
             val randomChild = childDirs[Random(childDirs.size).nextInt()]

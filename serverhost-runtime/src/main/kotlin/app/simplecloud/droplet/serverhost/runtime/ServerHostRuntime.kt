@@ -19,7 +19,7 @@ class ServerHostRuntime {
     private val serverLoader = ServerVersionLoader()
     private val templateCopier = TemplateCopier()
     private val configurator = ServerConfiguratorExecutor()
-    private val runner = ServerRunner(serverLoader, configurator, templateCopier)
+    private val runner = ServerRunner(serverLoader, configurator, templateCopier, serverHost!!)
     private val server = createGrpcServerFromEnv()
 
     fun start() {

@@ -19,8 +19,8 @@ class ServerHostConfig {
 
         private fun fromEnv(): ServerHost? {
             val id = System.getenv("ID") ?: return null
-            val port = System.getenv("GRPC_PORT")?.toInt() ?: 5820
-            val host = System.getenv("GRPC_HOST") ?: InetAddress.getLocalHost().hostAddress
+            val port = System.getenv("HOST_PORT")?.toInt() ?: 5820
+            val host = System.getenv("HOST_IP") ?: InetAddress.getLocalHost().hostAddress
             return ServerHost(id, host, port)
         }
     }
