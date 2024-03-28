@@ -7,7 +7,6 @@ import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.controller.shared.status.ApiResponse
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
-import app.simplecloud.droplet.serverhost.shared.server.ServerFactory
 import io.grpc.stub.StreamObserver
 
 class ServerHostService(
@@ -19,12 +18,12 @@ class ServerHostService(
         val group = Group.fromDefinition(request.group)
         val port = PortProcessHandle.findNextFreePort(group.startPort.toInt())
         PortProcessHandle.addPreBind(port)
-        val server = ServerFactory.builder()
-            .setHost(serverHost)
-            .setGroup(group)
-            .setNumericalId(request.numericalId.toLong())
-            .setPort(port.toLong())
-            .build()
+        val server = Server.fromDefinition(request.server.copy {
+            this.state = ServerState.STARTING
+            this.port = port.toLong()
+            this.hostId = serverHost.id
+            this.ip = serverHost.host
+        })
         try {
             if (!runner.startServer(server)) {
                 responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))

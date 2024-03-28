@@ -8,7 +8,6 @@ import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
-import io.grpc.ConnectivityState
 import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
 import java.io.File
@@ -55,6 +54,8 @@ class ServerRunner(
     }
 
     fun startServer(server: Server): Boolean {
+        logger.info("Starting server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
+
         if (containsServer(server)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Server with this id already exists.")
             return false
