@@ -4,6 +4,7 @@ import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.proto.ServerState
 import app.simplecloud.controller.shared.server.Server
+import java.time.LocalDateTime
 import java.util.*
 import kotlin.properties.Delegates
 
@@ -57,7 +58,9 @@ class ServerFactory {
             properties = mutableMapOf(
                 "serverUrl" to group.serverUrl,
                 *group.properties.entries.map { it.key to it.value }.toTypedArray()
-            )
+            ),
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now()
         )
     }
 

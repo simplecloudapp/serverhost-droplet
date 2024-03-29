@@ -9,6 +9,7 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import kotlinx.coroutines.*
+import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
 import java.nio.file.Files
@@ -82,9 +83,11 @@ class ServerRunner(
     }
 
     fun stopServer(server: Server): Boolean {
+        logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         if (!stopServer(server.uniqueId)) return false
         templateCopier.copy(server, TemplateActionType.SHUTDOWN)
-        Files.delete(getServerDir(server).toPath())
+        FileUtils.deleteDirectory(getServerDir(server))
+        logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
         return true
     }
 
