@@ -15,7 +15,10 @@ class DefaultTemplateExecutor : TemplateActionExecutor {
             val toPath = TemplatePlaceholders.parsePath(action.copyTo, "")
             val from = File(TemplatePlaceholders.parse(fromPath, server))
             val to = File(ServerRunner.getServerDir(server), TemplatePlaceholders.parse(toPath, server))
-            FileUtils.copyDirectory(from, to)
+            if(from.isDirectory)
+                FileUtils.copyDirectory(from, to)
+            else
+                FileUtils.copyFile(from, to)
             return true
         } catch (e: Exception) {
             return false

@@ -19,6 +19,7 @@ import org.apache.logging.log4j.LogManager
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
+import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
 
 class ServerRunner(
@@ -49,18 +50,21 @@ class ServerRunner(
 
     private fun updateServer(it: Server): CompletableFuture<Server> {
             val address = InetSocketAddress(it.ip, it.port.toInt())
-            try {
-                val response = ServerPinger.ping(address).get() ?: throw NullPointerException("No ping data found")
+            return ServerPinger.ping(address).thenApply { response ->
                 val server = Server.fromDefinition(it.toDefinition().copy {
                     this.state = if(response.motd == "INGAME") ServerState.INGAME else if(it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
                     this.properties.put("motd", response.motd)
                     this.properties.put("max-players", response.maxPlayers.toString())
                     this.properties.put("online-players", response.players.toString())
                 })
-                return CompletableFuture.completedFuture(server)
-            }catch (e: Exception) {
-                stopServer(it.uniqueId)
-                throw e
+                return@thenApply server
+            }.exceptionally {_ ->
+                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(20))) {
+                    stopServer(it)
+                    throw NullPointerException("No ping data found")
+                }else {
+                    return@exceptionally it
+                }
             }
     }
 
@@ -175,25 +179,13 @@ class ServerRunner(
         return CoroutineScope(Dispatchers.Default).launch {
             while (NonCancellable.isActive) {
                 running.keys.forEach {
-                    val process = running[it]
-                    val realProcess = PortProcessHandle.of(it.port.toInt()).orElse(null)
                     var delete = false
                     var server = it
-                    if(realProcess != null) {
-                        if(process?.pid() != realProcess.pid()) {
-                            stopServer(it)
-                            delete = true
-                        } else {
-                            updateServer(it).thenApply { then ->
-                                server = then
-                            }.exceptionally {
-                                delete = true
-                            }
-                        }
-                    }else {
-                        stopServer(it)
+                    updateServer(it).thenApply { then ->
+                        server = then
+                    }.exceptionally {
                         delete = true
-                    }
+                    }.get()
                     stub.updateServer(ServerUpdateRequest.newBuilder()
                         .setServer(server.toDefinition())
                         .setDeleted(delete).build())

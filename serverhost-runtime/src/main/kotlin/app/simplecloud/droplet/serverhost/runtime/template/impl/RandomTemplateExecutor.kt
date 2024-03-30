@@ -6,6 +6,7 @@ import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunnerPlaceholder
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateAction
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionExecutor
 import app.simplecloud.droplet.serverhost.runtime.template.TemplatePlaceholders
+import org.apache.commons.io.FileUtils
 import java.io.File
 import java.nio.file.Files
 import kotlin.random.Random
@@ -19,7 +20,10 @@ class RandomTemplateExecutor : TemplateActionExecutor {
             val childDirs = fromDir.listFiles() ?: return false
             val randomChild = childDirs[Random(childDirs.size).nextInt()]
             val to = File(ServerRunner.getServerDir(server), TemplatePlaceholders.parse(toPath, server))
-            Files.copy(randomChild.toPath(), to.toPath())
+            if(randomChild.isDirectory)
+                FileUtils.copyDirectory(randomChild, to)
+            else
+                FileUtils.copyFile(randomChild, to)
             return true
         } catch (e: Exception) {
             return false
