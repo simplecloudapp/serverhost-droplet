@@ -39,8 +39,11 @@ class ServerHostService(
     }
 
     override fun stopServer(request: ServerDefinition, responseObserver: StreamObserver<StatusResponse>) {
-        responseObserver.onNext(ApiResponse(if (runner.stopServer(Server.fromDefinition(request))) "success" else "error").toDefinition())
-        responseObserver.onCompleted()
+        runner.stopServer(Server.fromDefinition(request)).thenApply {
+            responseObserver.onNext(ApiResponse(if (it) "success" else "error").toDefinition())
+            responseObserver.onCompleted()
+        }
+
     }
 
     override fun reattachServer(request: ServerDefinition, responseObserver: StreamObserver<StatusResponse>) {

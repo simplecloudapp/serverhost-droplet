@@ -7,6 +7,8 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
+import io.grpc.ManagedChannel
+import io.grpc.ManagedChannelBuilder
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import org.apache.logging.log4j.LogManager
@@ -31,6 +33,7 @@ class ServerHostRuntime {
         startGrpcServer()
         attach()
         configurator.copyDefaults()
+        runner.startServerStateChecker()
     }
 
     private fun startGrpcServer() {
@@ -51,6 +54,15 @@ class ServerHostRuntime {
         return ServerBuilder.forPort(serverHost!!.port)
             .addService(ServerHostService(serverHost, runner))
             .build()
+    }
+
+    companion object {
+        fun createControllerChannel(): ManagedChannel {
+            val port = System.getenv("GRPC_PORT")?.toInt() ?: 5816
+            val host = System.getenv("GRPC_HOST") ?: "localhost"
+            return ManagedChannelBuilder.forAddress(host, port).usePlaintext()
+                .build()
+        }
     }
 
 }

@@ -1,10 +1,15 @@
 package app.simplecloud.droplet.serverhost.runtime.runner
 
 import app.simplecloud.controller.shared.host.ServerHost
+import app.simplecloud.controller.shared.proto.ControllerServerServiceGrpc
+import app.simplecloud.controller.shared.proto.ServerState
+import app.simplecloud.controller.shared.proto.ServerUpdateRequest
+import app.simplecloud.controller.shared.proto.copy
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
+import app.simplecloud.droplet.serverhost.runtime.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
@@ -12,7 +17,9 @@ import kotlinx.coroutines.*
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
+import java.net.InetSocketAddress
 import java.nio.file.Files
+import java.util.concurrent.CompletableFuture
 
 class ServerRunner(
     private val serverVersionLoader: ServerVersionLoader,
@@ -35,6 +42,26 @@ class ServerRunner(
 
     private fun getServer(uniqueId: String): Server? {
         return running.keys.find { it.uniqueId == uniqueId }
+    }
+
+    private val channel = ServerHostRuntime.createControllerChannel()
+    private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
+
+    private fun updateServer(it: Server): CompletableFuture<Server> {
+            val address = InetSocketAddress(it.ip, it.port.toInt())
+            try {
+                val response = ServerPinger.ping(address).get() ?: throw NullPointerException("No ping data found")
+                val server = Server.fromDefinition(it.toDefinition().copy {
+                    this.state = if(response.motd == "INGAME") ServerState.INGAME else if(it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
+                    this.properties.put("motd", response.motd)
+                    this.properties.put("max-players", response.maxPlayers.toString())
+                    this.properties.put("online-players", response.players.toString())
+                })
+                return CompletableFuture.completedFuture(server)
+            }catch (e: Exception) {
+                stopServer(it.uniqueId)
+                throw e
+            }
     }
 
     companion object {
@@ -82,21 +109,25 @@ class ServerRunner(
         return true
     }
 
-    fun stopServer(server: Server): Boolean {
+    fun stopServer(server: Server): CompletableFuture<Boolean> {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
-        if (!stopServer(server.uniqueId)) return false
-        templateCopier.copy(server, TemplateActionType.SHUTDOWN)
-        FileUtils.deleteDirectory(getServerDir(server))
-        logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
-        return true
+        return stopServer(server.uniqueId).thenApply {
+            if(!it) return@thenApply false
+            templateCopier.copy(server, TemplateActionType.SHUTDOWN)
+            FileUtils.deleteDirectory(getServerDir(server))
+            logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
+            return@thenApply true
+        }
     }
 
-    private fun stopServer(uniqueId: String): Boolean {
-        val server = getServer(uniqueId) ?: return false
-        val process = running[server] ?: return false
-        if (!process.destroy()) return false
-        running.remove(server)
-        return true
+    private fun stopServer(uniqueId: String): CompletableFuture<Boolean> {
+        val server = getServer(uniqueId) ?: return CompletableFuture.completedFuture(false)
+        val process = running[server] ?: return CompletableFuture.completedFuture(false)
+        process.destroy()
+        return process.onExit().thenApply {
+            running.remove(server)
+            return@thenApply true
+        }
     }
 
     fun reattachServer(server: Server): Boolean {
@@ -140,17 +171,32 @@ class ServerRunner(
     }
 
     @OptIn(InternalCoroutinesApi::class)
-    fun updateRunning(): Job {
+    fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.Default).launch {
             while (NonCancellable.isActive) {
                 running.keys.forEach {
                     val process = running[it]
                     val realProcess = PortProcessHandle.of(it.port.toInt()).orElse(null)
+                    var delete = false
+                    var server = it
                     if(realProcess != null) {
-                        if(process?.pid() != realProcess.pid()) stopServer(it)
+                        if(process?.pid() != realProcess.pid()) {
+                            stopServer(it)
+                            delete = true
+                        } else {
+                            updateServer(it).thenApply { then ->
+                                server = then
+                            }.exceptionally {
+                                delete = true
+                            }
+                        }
                     }else {
                         stopServer(it)
+                        delete = true
                     }
+                    stub.updateServer(ServerUpdateRequest.newBuilder()
+                        .setServer(server.toDefinition())
+                        .setDeleted(delete).build())
                 }
                 delay(5000L)
             }

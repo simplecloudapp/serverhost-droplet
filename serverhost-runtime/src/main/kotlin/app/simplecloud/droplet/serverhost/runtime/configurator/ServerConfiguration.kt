@@ -70,6 +70,7 @@ class ServerConfiguratorExecutor {
         copyDefault("options/configurators/bungeecord.yml")
         copyDefault("options/configurators/paper_velocity.yml")
         copyDefault("options/configurators/spigot.yml")
+        copyDefault("options/configurators/spigot_standalone.yml")
         copyDefault("options/configurators/velocity.yml")
     }
 
