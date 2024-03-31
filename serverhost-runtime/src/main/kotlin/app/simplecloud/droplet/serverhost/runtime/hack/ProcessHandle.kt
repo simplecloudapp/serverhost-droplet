@@ -1,12 +1,13 @@
 package app.simplecloud.droplet.serverhost.runtime.hack
 
+import java.time.LocalDateTime
 import java.util.*
 import java.util.regex.Pattern
 
 class PortProcessHandle {
     companion object {
 
-        private val preBindPorts = mutableMapOf<Int, Long>()
+        private val preBindPorts = mutableMapOf<Int, LocalDateTime>()
 
         fun of(port: Int): Optional<ProcessHandle> {
             val os = OS.get() ?: return Optional.empty()
@@ -41,14 +42,14 @@ class PortProcessHandle {
 
         fun findNextFreePort(startPort: Int): Int {
             var port = startPort
-            while(!of(port).isEmpty || System.currentTimeMillis() - preBindPorts.getOrDefault(port, 0) < 1000*30L) {
+            while(!of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.now().minusSeconds(1)))) {
                 port++
             }
             return port
         }
 
-        fun addPreBind(port: Int) {
-            preBindPorts[port] = System.currentTimeMillis()
+        fun addPreBind(port: Int, time: LocalDateTime, duration: Long) {
+            preBindPorts[port] = time.plusSeconds(duration)
         }
     }
 }

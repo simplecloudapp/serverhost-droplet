@@ -59,7 +59,7 @@ class ServerRunner(
                 })
                 return@thenApply server
             }.exceptionally {_ ->
-                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(20))) {
+                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "20").toLong()))) {
                     stopServer(it)
                     throw NullPointerException("No ping data found")
                 }else {
