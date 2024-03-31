@@ -70,7 +70,7 @@ class ServerRunner(
 
     companion object {
 
-        val DEFAULT_OPTIONS = listOf("-Dcom.mojang.eula.agree=true", "-jar")
+        val DEFAULT_OPTIONS = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
         val DEFAULT_ARGUMENTS = listOf("nogui")
         val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
 
@@ -159,11 +159,20 @@ class ServerRunner(
             DEFAULT_OPTIONS,
             DEFAULT_ARGUMENTS
         )
+        GroupRuntime.Config.save(server.group, GroupRuntime(args, null, null))
         val command = mutableListOf<String>()
         command.add(args.executable ?: DEFAULT_EXECUTABLE)
-        if (!args.options.isNullOrEmpty()) command.addAll(args.options)
+        val placeholders = mutableMapOf(
+            "%MIN_MEMORY%" to server.minMemory.toString(),
+            "%MAX_MEMORY%" to server.maxMemory.toString(),
+        )
+        placeholders.putAll(server.properties.map {
+            "%${it.key.uppercase().replace("-", "_")}%" to it.value
+        })
+
+        if (!args.options.isNullOrEmpty()) command.addAllWithPlaceholders(args.options, placeholders)
         command.add(serverVersionLoader.getServerJar(server).absolutePath)
-        if (!args.arguments.isNullOrEmpty()) command.addAll(args.arguments)
+        if (!args.arguments.isNullOrEmpty()) command.addAllWithPlaceholders(args.arguments, placeholders)
         val builder = ProcessBuilder()
             .command(command)
             .directory(getServerDir(server, runtimeConfig))
@@ -193,6 +202,16 @@ class ServerRunner(
                 delay(5000L)
             }
         }
+    }
+
+    private fun MutableList<String>.addAllWithPlaceholders(commands: List<String>, placeholders: Map<String, String>) {
+        addAll(commands.map {
+            var returned = it
+            placeholders.keys.map { placeholder ->
+                returned = returned.replace(placeholder, placeholders.getOrDefault(placeholder, ""))
+            }
+            return@map returned
+        })
     }
 
 }
