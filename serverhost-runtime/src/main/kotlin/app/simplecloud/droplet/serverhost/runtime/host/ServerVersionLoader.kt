@@ -3,12 +3,9 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import app.simplecloud.controller.shared.server.Server
 import org.apache.commons.io.FilenameUtils
 import java.io.File
-import java.net.URI
 import java.net.URL
 import java.nio.file.Files
-import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
-import kotlin.io.path.name
 
 class ServerVersionLoader {
 

@@ -8,7 +8,6 @@ import app.simplecloud.controller.shared.status.ApiResponse
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import io.grpc.stub.StreamObserver
-import java.time.ZoneId
 
 class ServerHostService(
     private val serverHost: ServerHost,
@@ -24,7 +23,11 @@ class ServerHostService(
             this.hostId = serverHost.id
             this.ip = serverHost.host
         })
-        PortProcessHandle.addPreBind(port, server.createdAt, server.properties.getOrDefault("max-startup-seconds", "20").toLong())
+        PortProcessHandle.addPreBind(
+            port,
+            server.createdAt,
+            server.properties.getOrDefault("max-startup-seconds", "20").toLong()
+        )
         try {
             if (!runner.startServer(server)) {
                 responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))

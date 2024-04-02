@@ -7,7 +7,7 @@ import org.spongepowered.configurate.kotlin.objectMapper
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
-import java.util.Scanner
+import java.util.*
 
 open class YamlConfig(private val dirPath: String) {
 
@@ -42,7 +42,7 @@ open class YamlConfig(private val dirPath: String) {
 
     inline fun <reified T> loadYaml(yml: String): T? {
         val node = YamlConfigurationLoader.builder().defaultOptions {
-            it.serializers {builder ->
+            it.serializers { builder ->
                 builder.registerAnnotatedObjects(objectMapperFactory())
             }
         }.buildAndLoadString(yml)
@@ -50,10 +50,10 @@ open class YamlConfig(private val dirPath: String) {
     }
 
     fun loadFile(file: File): String? {
-        if(!file.exists()) return null
+        if (!file.exists()) return null
         val scanner = Scanner(file)
         var result = ""
-        while(scanner.hasNextLine())result += "${scanner.nextLine()}\n"
+        while (scanner.hasNextLine()) result += "${scanner.nextLine()}\n"
         return result
     }
 

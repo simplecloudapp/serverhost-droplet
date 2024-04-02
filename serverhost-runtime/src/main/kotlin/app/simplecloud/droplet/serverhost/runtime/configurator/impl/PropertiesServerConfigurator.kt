@@ -6,9 +6,9 @@ import org.spongepowered.configurate.kotlin.extensions.get
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
-import java.util.Properties
+import java.util.*
 
-object PropertiesServerConfigurator: ServerConfigurator<Properties> {
+object PropertiesServerConfigurator : ServerConfigurator<Properties> {
     override fun load(data: ConfigurationNode): Properties {
         val parsedData = data.childrenMap().map { it.key.toString() to it.value.get<Any>() }
         val properties = Properties()
@@ -19,7 +19,7 @@ object PropertiesServerConfigurator: ServerConfigurator<Properties> {
     }
 
     override fun load(file: File): Properties? {
-        if(!file.exists()) return null
+        if (!file.exists()) return null
         val properties = Properties()
         properties.load(FileReader(file))
         return properties
