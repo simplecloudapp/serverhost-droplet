@@ -48,7 +48,7 @@ class ServerRunner(
     private val channel = ServerHostRuntime.createControllerChannel()
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
 
-    private fun updateServer(it: Server): CompletableFuture<Server> {
+    private fun updateServer(it: Server): CompletableFuture<Server?> {
             val address = InetSocketAddress(it.ip, it.port.toInt())
             return ServerPinger.ping(address).thenApply { response ->
                 val server = Server.fromDefinition(it.toDefinition().copy {
@@ -61,7 +61,7 @@ class ServerRunner(
             }.exceptionally {_ ->
                 if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "20").toLong()))) {
                     stopServer(it)
-                    throw NullPointerException("No ping data found")
+                    return@exceptionally null
                 }else {
                     return@exceptionally it
                 }
@@ -98,7 +98,7 @@ class ServerRunner(
             return false
         }
         serverVersionLoader.download(server)
-        val builder = buildProcess(server, runtimeConfig).inheritIO()
+        val builder = buildProcess(server, runtimeConfig)
         if (!builder.directory().exists()) builder.directory().mkdirs()
         templateCopier.copy(server, TemplateActionType.DEFAULT)
         templateCopier.copy(server, TemplateActionType.RANDOM)
@@ -191,7 +191,8 @@ class ServerRunner(
                     var delete = false
                     var server = it
                     updateServer(it).thenApply { then ->
-                        server = then
+                        if(then == null) delete = true
+                        else server = then
                     }.exceptionally {
                         delete = true
                     }.get()

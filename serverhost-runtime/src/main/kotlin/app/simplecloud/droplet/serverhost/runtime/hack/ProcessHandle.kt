@@ -33,6 +33,7 @@ class PortProcessHandle {
             while (reader.readLine()?.also { line = it } != null) {
                 val matcher = pattern.matcher(line)
                 if (matcher.matches()) {
+                    preBindPorts.remove(port)
                     val pid: Long = matcher.group(pidIndex).toLong()
                     return ProcessHandle.of(pid)
                 }
@@ -40,9 +41,10 @@ class PortProcessHandle {
             return Optional.empty()
         }
 
+        @Synchronized
         fun findNextFreePort(startPort: Int): Int {
             var port = startPort
-            while(!of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.now().minusSeconds(1)))) {
+            while(!of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))) {
                 port++
             }
             return port
