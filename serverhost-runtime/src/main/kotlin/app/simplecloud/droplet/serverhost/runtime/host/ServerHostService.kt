@@ -16,18 +16,14 @@ class ServerHostService(
 
     override fun startServer(request: StartServerRequest, responseObserver: StreamObserver<ServerDefinition>) {
         val group = Group.fromDefinition(request.group)
-        val port = PortProcessHandle.findNextFreePort(group.startPort.toInt())
+        val port = PortProcessHandle.findNextFreePort(group.startPort.toInt(), request.server)
         val server = Server.fromDefinition(request.server.copy {
             this.state = ServerState.STARTING
             this.port = port.toLong()
             this.hostId = serverHost.id
             this.ip = serverHost.host
         })
-        PortProcessHandle.addPreBind(
-            port,
-            server.createdAt,
-            server.properties.getOrDefault("max-startup-seconds", "20").toLong()
-        )
+
         try {
             if (!runner.startServer(server)) {
                 responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))

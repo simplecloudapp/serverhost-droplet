@@ -1,13 +1,16 @@
 package app.simplecloud.droplet.serverhost.runtime.hack
 
+import app.simplecloud.controller.shared.proto.ServerDefinition
+import app.simplecloud.controller.shared.server.Server
 import java.time.LocalDateTime
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
 class PortProcessHandle {
     companion object {
 
-        private val preBindPorts = mutableMapOf<Int, LocalDateTime>()
+        private val preBindPorts = ConcurrentHashMap<Int, LocalDateTime>()
 
         fun of(port: Int): Optional<ProcessHandle> {
             val os = OS.get() ?: return Optional.empty()
@@ -20,6 +23,7 @@ class PortProcessHandle {
                     pattern = Pattern.compile("\\s*TCP\\s+\\S+:(\\d+)\\s+\\S+:(\\d+)\\s+\\S+\\s+(\\d+)")
                     pidIndex = 3
                 }
+
                 OS.UNIX -> {
                     command = "bash -c lsof -i :$port"
                     pattern = Pattern.compile("\\S+\\s+(\\d+)\\s+.*:$port")
@@ -42,15 +46,19 @@ class PortProcessHandle {
         }
 
         @Synchronized
-        fun findNextFreePort(startPort: Int): Int {
+        fun findNextFreePort(startPort: Int, serverDefinition: ServerDefinition): Int {
+            val server = Server.fromDefinition(serverDefinition)
             var port = startPort
-            while(!of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))) {
+            while (!of(port).isEmpty || LocalDateTime.now()
+                    .isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
+            ) {
                 port++
             }
+            addPreBind(port, server.createdAt, server.properties.getOrDefault("max-startup-seconds", "20").toLong())
             return port
         }
 
-        fun addPreBind(port: Int, time: LocalDateTime, duration: Long) {
+        private fun addPreBind(port: Int, time: LocalDateTime, duration: Long) {
             preBindPorts[port] = time.plusSeconds(duration)
         }
     }
