@@ -5,6 +5,7 @@ import app.simplecloud.droplet.serverhost.runtime.controller.Attacher
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostConfig
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import io.grpc.ManagedChannel
@@ -14,7 +15,9 @@ import io.grpc.ServerBuilder
 import org.apache.logging.log4j.LogManager
 import kotlin.concurrent.thread
 
-class ServerHostRuntime {
+class ServerHostRuntime(
+    private val serverHostStartCommand: ServerHostStartCommand
+) {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
     private val serverHost = ServerHostConfig.load("config.yml")
