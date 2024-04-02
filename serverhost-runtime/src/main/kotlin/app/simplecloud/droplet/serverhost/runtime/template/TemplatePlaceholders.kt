@@ -9,7 +9,7 @@ object TemplatePlaceholders {
     val TEMPLATE_PATH = System.getenv("TEMPLATE_PATH") ?: "templates"
 
     fun parsePath(path: String, prefix: String): String {
-        if(path.startsWith("/")) return path
+        if (path.startsWith("/")) return path
         return "$prefix/$path"
     }
 

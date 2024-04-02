@@ -6,7 +6,7 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 
-object TextServerConfigurator: ServerConfigurator<String> {
+object TextServerConfigurator : ServerConfigurator<String> {
     override fun load(data: ConfigurationNode): String? {
         return data.string
     }

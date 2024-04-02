@@ -11,9 +11,11 @@ class TemplateCopier {
                     actionType.executor().execute(it, server)
                 }
             }
+
             TemplateActionType.RANDOM -> template?.randomDestinations?.forEach {
                 actionType.executor().execute(it, server)
             }
+
             TemplateActionType.SHUTDOWN -> template?.shutdownDestinations?.forEach {
                 actionType.executor().execute(it, server)
             }

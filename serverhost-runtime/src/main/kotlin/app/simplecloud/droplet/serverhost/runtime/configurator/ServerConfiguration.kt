@@ -43,14 +43,16 @@ object ServerConfiguratorPlaceholderMapper {
         map.putAll(server.properties)
         return map
     }
+
     fun map(templatedString: String, server: Server): String {
         var result = templatedString
-        for((template, value) in toTemplateList(server)) {
+        for ((template, value) in toTemplateList(server)) {
             result = result.replace("%$template%", value.toString())
         }
         return result
     }
 }
+
 class ServerConfiguratorExecutor {
     fun configurate(server: Server): Boolean {
         val configurator = server.properties["configurator"] ?: return false
@@ -77,7 +79,7 @@ class ServerConfiguratorExecutor {
     //TODO: Move to util class
     private fun copyDefault(path: String) {
         val file = File(path)
-        if(!file.exists()) {
+        if (!file.exists()) {
             Files.createDirectories(file.parentFile.toPath())
             Files.copy(ServerConfiguratorExecutor::class.java.getResourceAsStream("/$path")!!, File(path).toPath())
         }

@@ -11,7 +11,7 @@ object YamlServerConfigurator : ServerConfigurator<ConfigurationNode> {
     }
 
     override fun load(file: File): ConfigurationNode? {
-        if(!file.exists()) return null
+        if (!file.exists()) return null
         val loader = YamlConfigurationLoader.builder().file(file).build()
         return loader.load()
     }
@@ -19,9 +19,9 @@ object YamlServerConfigurator : ServerConfigurator<ConfigurationNode> {
     override fun save(data: ConfigurationNode, file: File) {
         val existing = load(file)
         val saved: ConfigurationNode
-        if(existing == null) {
+        if (existing == null) {
             saved = data
-        }else {
+        } else {
             saved = existing.copy()
             saved.mergeFrom(data)
         }

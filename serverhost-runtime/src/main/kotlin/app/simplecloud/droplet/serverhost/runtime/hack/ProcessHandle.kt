@@ -20,6 +20,7 @@ class PortProcessHandle {
                     pattern = Pattern.compile("\\s*TCP\\s+\\S+:(\\d+)\\s+\\S+:(\\d+)\\s+\\S+\\s+(\\d+)")
                     pidIndex = 3
                 }
+
                 OS.UNIX -> {
                     command = "bash -c lsof -i :$port"
                     pattern = Pattern.compile("\\S+\\s+(\\d+)\\s+.*:$port")
@@ -42,7 +43,9 @@ class PortProcessHandle {
 
         fun findNextFreePort(startPort: Int): Int {
             var port = startPort
-            while(!of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.now().minusSeconds(1)))) {
+            while (!of(port).isEmpty || LocalDateTime.now()
+                    .isBefore(preBindPorts.getOrDefault(port, LocalDateTime.now().minusSeconds(1)))
+            ) {
                 port++
             }
             return port

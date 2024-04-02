@@ -49,23 +49,26 @@ class ServerRunner(
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
 
     private fun updateServer(it: Server): CompletableFuture<Server> {
-            val address = InetSocketAddress(it.ip, it.port.toInt())
-            return ServerPinger.ping(address).thenApply { response ->
-                val server = Server.fromDefinition(it.toDefinition().copy {
-                    this.state = if(response.motd == "INGAME") ServerState.INGAME else if(it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
-                    this.properties.put("motd", response.motd)
-                    this.properties.put("max-players", response.maxPlayers.toString())
-                    this.properties.put("online-players", response.players.toString())
-                })
-                return@thenApply server
-            }.exceptionally {_ ->
-                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "20").toLong()))) {
-                    stopServer(it)
-                    throw NullPointerException("No ping data found")
-                }else {
-                    return@exceptionally it
-                }
+        val address = InetSocketAddress(it.ip, it.port.toInt())
+        return ServerPinger.ping(address).thenApply { response ->
+            val server = Server.fromDefinition(it.toDefinition().copy {
+                this.state =
+                    if (response.motd == "INGAME") ServerState.INGAME else if (it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
+                this.properties.put("motd", response.motd)
+                this.properties.put("max-players", response.maxPlayers.toString())
+                this.properties.put("online-players", response.players.toString())
+            })
+            return@thenApply server
+        }.exceptionally { _ ->
+            if (LocalDateTime.now()
+                    .isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "20").toLong()))
+            ) {
+                stopServer(it)
+                throw NullPointerException("No ping data found")
+            } else {
+                return@exceptionally it
             }
+        }
     }
 
     companion object {
@@ -79,8 +82,9 @@ class ServerRunner(
         }
 
         private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
-            var basicUrl = if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
-            if(!basicUrl.startsWith("/")) basicUrl = "${ServerRunnerPlaceholders.RUNNING_PATH}/$basicUrl"
+            var basicUrl =
+                if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
+            if (!basicUrl.startsWith("/")) basicUrl = "${ServerRunnerPlaceholders.RUNNING_PATH}/$basicUrl"
             return File(basicUrl)
         }
     }
@@ -102,7 +106,7 @@ class ServerRunner(
         if (!builder.directory().exists()) builder.directory().mkdirs()
         templateCopier.copy(server, TemplateActionType.DEFAULT)
         templateCopier.copy(server, TemplateActionType.RANDOM)
-        if(!serverConfigurator.configurate(server)) {
+        if (!serverConfigurator.configurate(server)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
             Files.delete(getServerDir(server).toPath())
             return false
@@ -116,7 +120,7 @@ class ServerRunner(
     fun stopServer(server: Server): CompletableFuture<Boolean> {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         return stopServer(server.uniqueId).thenApply {
-            if(!it) return@thenApply false
+            if (!it) return@thenApply false
             templateCopier.copy(server, TemplateActionType.SHUTDOWN)
             FileUtils.deleteDirectory(getServerDir(server))
             logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
@@ -195,9 +199,11 @@ class ServerRunner(
                     }.exceptionally {
                         delete = true
                     }.get()
-                    stub.updateServer(ServerUpdateRequest.newBuilder()
-                        .setServer(server.toDefinition())
-                        .setDeleted(delete).build())
+                    stub.updateServer(
+                        ServerUpdateRequest.newBuilder()
+                            .setServer(server.toDefinition())
+                            .setDeleted(delete).build()
+                    )
                 }
                 delay(5000L)
             }
