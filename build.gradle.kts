@@ -14,6 +14,7 @@ allprojects {
     repositories {
         mavenCentral()
         mavenLocal()
+        maven("https://buf.build/gen/maven")
     }
 }
 

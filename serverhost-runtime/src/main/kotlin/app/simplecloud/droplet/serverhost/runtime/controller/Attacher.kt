@@ -2,7 +2,7 @@ package app.simplecloud.droplet.serverhost.runtime.controller
 
 import app.simplecloud.controller.shared.future.toCompletable
 import app.simplecloud.controller.shared.host.ServerHost
-import app.simplecloud.controller.shared.proto.ControllerServerServiceGrpc
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import app.simplecloud.controller.shared.status.ApiResponse
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import io.grpc.ConnectivityState

@@ -1,6 +1,6 @@
 package app.simplecloud.droplet.serverhost.runtime.hack
 
-import app.simplecloud.controller.shared.proto.ServerDefinition
+import build.buf.gen.simplecloud.controller.v1.ServerDefinition
 import app.simplecloud.controller.shared.server.Server
 import java.time.LocalDateTime
 import java.util.*

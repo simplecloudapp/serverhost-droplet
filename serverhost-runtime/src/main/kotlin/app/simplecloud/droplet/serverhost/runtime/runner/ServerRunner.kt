@@ -1,10 +1,10 @@
 package app.simplecloud.droplet.serverhost.runtime.runner
 
 import app.simplecloud.controller.shared.host.ServerHost
-import app.simplecloud.controller.shared.proto.ControllerServerServiceGrpc
-import app.simplecloud.controller.shared.proto.ServerState
-import app.simplecloud.controller.shared.proto.ServerUpdateRequest
-import app.simplecloud.controller.shared.proto.copy
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
+import build.buf.gen.simplecloud.controller.v1.ServerState
+import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
+import build.buf.gen.simplecloud.controller.v1.copy
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
