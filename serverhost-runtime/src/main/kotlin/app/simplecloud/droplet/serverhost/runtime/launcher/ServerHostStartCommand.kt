@@ -4,6 +4,7 @@ import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import java.nio.file.Path
 
@@ -15,6 +16,9 @@ class ServerHostStartCommand : CliktCommand() {
     val runningServersPath by option(help = "Path to the running servers (running)", envvar = "RUNNING_SERVERS_PATH")
         .path()
         .default(Path.of("running"))
+
+    val grpcHost: String by option(help = "Grpc host (default: localhost)", envvar = "GRPC_HOST").default("localhost")
+    val grpcPort: Int by option(help = "Grpc port (default: 5816)", envvar = "GRPC_PORT").int().default(5816)
 
     override fun run() {
         val serverHostRuntime = ServerHostRuntime(this)
