@@ -11,15 +11,13 @@ import org.apache.commons.io.FileUtils
 import java.io.File
 import kotlin.random.Random
 
-class RandomTemplateExecutor(
-    private val args: ServerHostStartCommand
-) : TemplateActionExecutor {
-    override fun execute(action: TemplateAction, server: Server): Boolean {
+class RandomTemplateExecutor : TemplateActionExecutor {
+    override fun execute(action: TemplateAction, server: Server, args: ServerHostStartCommand, runner: ServerRunner): Boolean {
         try {
             val parsedFrom = TemplatePlaceholders.parse(action.copyFrom, server)
             val fromPath = TemplatePlaceholders.parsePath(parsedFrom, args.templatePath)
             val parsedTo = TemplatePlaceholders.parse(action.copyTo, server)
-            val toPath = TemplatePlaceholders.parsePath(parsedTo, ServerRunner.getServerDir(server).toPath())
+            val toPath = TemplatePlaceholders.parsePath(parsedTo, runner.getServerDir(server).toPath())
             val fromDir = fromPath.toFile()
             val childDirs = fromDir.listFiles() ?: return false
             val randomChild = childDirs[Random(childDirs.size).nextInt()]

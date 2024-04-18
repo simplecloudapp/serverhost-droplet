@@ -9,15 +9,13 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplatePlaceholders
 import org.apache.commons.io.FileUtils
 import java.io.File
 
-class ShutdownTemplateExecutor(
-    private val args: ServerHostStartCommand
-) : TemplateActionExecutor {
-    override fun execute(action: TemplateAction, server: Server): Boolean {
+class ShutdownTemplateExecutor : TemplateActionExecutor {
+    override fun execute(action: TemplateAction, server: Server, args: ServerHostStartCommand, runner: ServerRunner): Boolean {
         try {
             val parsedTo = TemplatePlaceholders.parse(action.copyFrom, server)
             val toPath = TemplatePlaceholders.parsePath(parsedTo, args.templatePath)
             val parsedFrom = TemplatePlaceholders.parse(action.copyTo, server)
-            val fromPath = TemplatePlaceholders.parsePath(parsedFrom, ServerRunner.getServerDir(server).toPath())
+            val fromPath = TemplatePlaceholders.parsePath(parsedFrom, runner.getServerDir(server).toPath())
             val from = fromPath.toFile()
             val to = toPath.toFile()
             if (from.isDirectory)

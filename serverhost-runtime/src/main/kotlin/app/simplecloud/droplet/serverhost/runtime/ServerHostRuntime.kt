@@ -16,15 +16,15 @@ import org.apache.logging.log4j.LogManager
 import kotlin.concurrent.thread
 
 class ServerHostRuntime(
-    private val serverHostStartCommand: ServerHostStartCommand
+    serverHostStartCommand: ServerHostStartCommand
 ) {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
     private val serverHost = ServerHostConfig.load("config.yml")
     private val serverLoader = ServerVersionLoader()
-    private val templateCopier = TemplateCopier()
     private val configurator = ServerConfiguratorExecutor()
-    private val runner = ServerRunner(serverLoader, configurator, templateCopier, serverHost!!)
+    private val templateCopier = TemplateCopier(serverHostStartCommand)
+    private val runner = ServerRunner(serverLoader, configurator, templateCopier, serverHost!!, serverHostStartCommand)
     private val server = createGrpcServerFromEnv()
 
     fun start() {

@@ -7,10 +7,13 @@ import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
 import build.buf.gen.simplecloud.controller.v1.copy
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
+import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguration
+import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurator
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import kotlinx.coroutines.*
@@ -24,9 +27,10 @@ import java.util.concurrent.CompletableFuture
 
 class ServerRunner(
     private val serverVersionLoader: ServerVersionLoader,
-    private val serverConfigurator: ServerConfiguratorExecutor,
+    private val configurator: ServerConfiguratorExecutor,
     private val templateCopier: TemplateCopier,
-    private val serverHost: ServerHost
+    private val serverHost: ServerHost,
+    private val args: ServerHostStartCommand
 ) {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
@@ -68,21 +72,18 @@ class ServerRunner(
             }
     }
 
-    companion object {
+    val DEFAULT_OPTIONS = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
+    val DEFAULT_ARGUMENTS = listOf("nogui")
+    val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
 
-        val DEFAULT_OPTIONS = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
-        val DEFAULT_ARGUMENTS = listOf("nogui")
-        val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
+    fun getServerDir(server: Server): File {
+        return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
+    }
 
-        fun getServerDir(server: Server): File {
-            return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
-        }
-
-        private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
-            var basicUrl = if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
-            if(!basicUrl.startsWith("/")) basicUrl = "${ServerRunnerPlaceholders.RUNNING_PATH}/$basicUrl"
-            return File(basicUrl)
-        }
+    private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
+        var basicUrl = if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
+        if(!basicUrl.startsWith("/")) basicUrl = "${args.runningServersPath}/$basicUrl"
+        return File(basicUrl)
     }
 
     fun startServer(server: Server): Boolean {
@@ -100,9 +101,9 @@ class ServerRunner(
         serverVersionLoader.download(server)
         val builder = buildProcess(server, runtimeConfig)
         if (!builder.directory().exists()) builder.directory().mkdirs()
-        templateCopier.copy(server, TemplateActionType.DEFAULT)
-        templateCopier.copy(server, TemplateActionType.RANDOM)
-        if(!serverConfigurator.configurate(server)) {
+        templateCopier.copy(server, this, TemplateActionType.DEFAULT)
+        templateCopier.copy(server, this, TemplateActionType.RANDOM)
+        if(!configurator.configurate(server, this)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
             Files.delete(getServerDir(server).toPath())
             return false
@@ -117,7 +118,7 @@ class ServerRunner(
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         return stopServer(server.uniqueId).thenApply {
             if(!it) return@thenApply false
-            templateCopier.copy(server, TemplateActionType.SHUTDOWN)
+            templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
             FileUtils.deleteDirectory(getServerDir(server))
             logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
             return@thenApply true

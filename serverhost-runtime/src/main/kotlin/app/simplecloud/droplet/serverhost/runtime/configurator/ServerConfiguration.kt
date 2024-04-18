@@ -54,7 +54,7 @@ object ServerConfiguratorPlaceholderMapper {
 }
 
 class ServerConfiguratorExecutor {
-    fun configurate(server: Server): Boolean {
+    fun configurate(server: Server, runner: ServerRunner): Boolean {
         val configurator = server.properties["configurator"] ?: return false
         val configLoader = YamlConfig("options/configurators")
         val content = configLoader.loadFile("$configurator.yml") ?: return false
@@ -62,7 +62,7 @@ class ServerConfiguratorExecutor {
         val config = configLoader.loadYaml<ServerConfiguration>(mappedContent) ?: return false
         config.operations.forEach {
             val data = it.type.configurator.load(it.data) ?: return false
-            it.type.configurator.save(data, File(ServerRunner.getServerDir(server), it.path))
+            it.type.configurator.save(data, File(runner.getServerDir(server), it.path))
         }
         return true
     }
