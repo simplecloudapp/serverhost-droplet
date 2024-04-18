@@ -48,12 +48,11 @@ object PortProcessHandle {
     fun findNextFreePort(startPort: Int, serverDefinition: ServerDefinition): Int {
         val server = Server.fromDefinition(serverDefinition)
         var port = startPort
-        while (!of(port).isEmpty || LocalDateTime.now()
-                .isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
-        ) {
+        val time = LocalDateTime.now()
+        while (!of(port).isEmpty || time.isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))) {
             port++
         }
-        addPreBind(port, server.createdAt, server.properties.getOrDefault("max-startup-seconds", "20").toLong())
+        addPreBind(port, LocalDateTime.now(), server.properties.getOrDefault("max-startup-seconds", "20").toLong())
         return port
     }
 

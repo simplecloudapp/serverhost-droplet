@@ -41,6 +41,7 @@ object ServerConfiguratorPlaceholderMapper {
         val map = mutableMapOf<String, Any>()
         map["ip"] = server.ip
         map["port"] = server.port
+        map["max-players"] = server.maxPlayers
         map.putAll(server.properties)
         return map
     }

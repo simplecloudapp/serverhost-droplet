@@ -23,14 +23,14 @@ class ServerVersionLoader {
     fun download(server: Server) {
         val destination = getServerJar(server)
         if (!destination.exists()) {
-            download(server.properties["serverUrl"]!!, destination)
+            download(server.properties["server-url"]!!, destination)
         }
     }
 
     fun getServerJar(server: Server): File {
         return File(
             "cache/servers/${
-                FilenameUtils.getBaseName(URL(server.properties["serverUrl"]).path).uppercase()
+                FilenameUtils.getBaseName(URL(server.properties["server-url"]).path).uppercase()
             }.jar"
         )
     }
