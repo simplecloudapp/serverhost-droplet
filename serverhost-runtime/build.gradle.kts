@@ -10,6 +10,7 @@ dependencies {
     implementation(rootProject.libs.bundles.log4j)
     implementation(rootProject.libs.clikt)
     implementation(rootProject.libs.commonsIo)
+    implementation(rootProject.libs.toml4j)
 }
 
 application {
