@@ -25,11 +25,10 @@ class Attacher(private val serverHost: ServerHost) {
     }
 
 
-    @OptIn(InternalCoroutinesApi::class)
     fun enforceAttach(): Job {
         return CoroutineScope(Dispatchers.Default).launch {
             var attached = attach().get()
-            while (NonCancellable.isActive) {
+            while (isActive) {
                 if (attached) {
                     if (!channel.getState(true).equals(ConnectivityState.READY)) {
                         attached = false

@@ -57,9 +57,9 @@ class ServerRunner(
             return ServerPinger.ping(address).thenApply { response ->
                 val server = Server.fromDefinition(it.toDefinition().copy {
                     this.state = if(response.motd == "INGAME") ServerState.INGAME else if(it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
+                    this.maxPlayers = response.maxPlayers.toLong()
+                    this.playerCount = response.players.toLong()
                     this.properties.put("motd", response.motd)
-                    this.properties.put("max-players", response.maxPlayers.toString())
-                    this.properties.put("online-players", response.players.toString())
                 })
                 return@thenApply server
             }.exceptionally {_ ->
@@ -184,10 +184,9 @@ class ServerRunner(
         return builder
     }
 
-    @OptIn(InternalCoroutinesApi::class)
     fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.Default).launch {
-            while (NonCancellable.isActive) {
+            while (isActive) {
                 running.keys.toList().forEach {
                     var delete = false
                     var server = it
