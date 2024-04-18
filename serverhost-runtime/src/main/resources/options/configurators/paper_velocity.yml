@@ -1,6 +1,11 @@
-dependsOn:
-  - "spigot"
 paths:
+  - path: "server.properties"
+    type: "PROPERTIES"
+    data:
+      server-ip: "%ip%"
+      server-port: %port%
+      max-players: %max-players%
+      online-mode: false
   - path: "paper-global.yml"
     type: "YML"
     data:
