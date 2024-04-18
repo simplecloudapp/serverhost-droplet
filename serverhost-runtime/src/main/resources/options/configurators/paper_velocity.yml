@@ -8,4 +8,4 @@ paths:
         velocity:
           enabled: "true"
           online-mode: "true"
-          secret: "%forwarding_secret%"
+          secret: "%forwarding-secret%"
