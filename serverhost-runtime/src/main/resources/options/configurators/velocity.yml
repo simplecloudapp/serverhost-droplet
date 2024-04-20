@@ -3,6 +3,8 @@ paths:
     type: "TOML"
     data:
       bind: "%ip%:%port%"
+      show-max-players: %max-players%
+      forwarding-secret-file: "forwarding.secret"
       player-info-forwarding-mode: "MODERN"
   - path: "forwarding.secret"
     type: "TXT"

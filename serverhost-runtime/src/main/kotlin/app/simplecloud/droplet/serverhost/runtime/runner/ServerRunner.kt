@@ -63,7 +63,7 @@ class ServerRunner(
                 })
                 return@thenApply server
             }.exceptionally {_ ->
-                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "20").toLong()))) {
+                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "120").toLong()))) {
                     stopServer(it)
                     return@exceptionally null
                 }else {

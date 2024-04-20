@@ -16,6 +16,7 @@ object TomlServerConfigurator : ServerConfigurator<MutableMap<String, Any>> {
     }
 
     override fun load(file: File): MutableMap<String, Any>? {
+        if(!file.exists()) return mutableMapOf()
         return Toml().read(file).toMap()
     }
 

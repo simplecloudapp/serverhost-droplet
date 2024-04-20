@@ -36,7 +36,6 @@ object PortProcessHandle {
         while (reader.readLine()?.also { line = it } != null) {
             val matcher = pattern.matcher(line)
             if (matcher.matches()) {
-                preBindPorts.remove(port)
                 val pid: Long = matcher.group(pidIndex).toLong()
                 return ProcessHandle.of(pid)
             }
@@ -52,7 +51,7 @@ object PortProcessHandle {
         while (!of(port).isEmpty || time.isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))) {
             port++
         }
-        addPreBind(port, LocalDateTime.now(), server.properties.getOrDefault("max-startup-seconds", "20").toLong())
+        addPreBind(port, time, server.properties.getOrDefault("max-startup-seconds", "120").toLong())
         return port
     }
 
