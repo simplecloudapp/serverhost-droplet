@@ -8,7 +8,7 @@ class TemplateCopier(
     private val args: ServerHostStartCommand,
 ) {
     fun copy(server: Server, runner: ServerRunner, actionType: TemplateActionType) {
-        val template = Template.Config.load<Template>("${server.group}.yml")
+        val template = Template.Config.load<Template>("${server.properties.getOrDefault("template-id", server.group)}.yml")
         when (actionType) {
             TemplateActionType.DEFAULT -> {
                 template?.destinations?.forEach {
