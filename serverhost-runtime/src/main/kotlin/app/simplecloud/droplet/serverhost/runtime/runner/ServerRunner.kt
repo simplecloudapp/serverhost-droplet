@@ -1,14 +1,8 @@
 package app.simplecloud.droplet.serverhost.runtime.runner
 
 import app.simplecloud.controller.shared.host.ServerHost
-import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
-import build.buf.gen.simplecloud.controller.v1.ServerState
-import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
-import build.buf.gen.simplecloud.controller.v1.copy
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguration
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurator
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.hack.ServerPinger
@@ -16,6 +10,10 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
+import build.buf.gen.simplecloud.controller.v1.ServerState
+import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
+import build.buf.gen.simplecloud.controller.v1.copy
 import kotlinx.coroutines.*
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
@@ -53,23 +51,29 @@ class ServerRunner(
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
 
     private fun updateServer(it: Server): CompletableFuture<Server?> {
-            val address = InetSocketAddress(it.ip, it.port.toInt())
-            return ServerPinger.ping(address).thenApply { response ->
-                val server = Server.fromDefinition(it.toDefinition().copy {
-                    this.state = if(response.motd == "INGAME") ServerState.INGAME else if(it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
-                    this.maxPlayers = response.maxPlayers.toLong()
-                    this.playerCount = response.players.toLong()
-                    this.properties.put("motd", response.motd)
-                })
-                return@thenApply server
-            }.exceptionally {_ ->
-                if(LocalDateTime.now().isAfter(it.createdAt.plusSeconds(it.properties.getOrDefault("max-startup-seconds", "120").toLong()))) {
-                    stopServer(it)
-                    return@exceptionally null
-                }else {
-                    return@exceptionally it
-                }
+        val address = InetSocketAddress(it.ip, it.port.toInt())
+        return ServerPinger.ping(address).thenApply { response ->
+            val server = Server.fromDefinition(it.toDefinition().copy {
+                this.state =
+                    if (response.description.text == "INGAME") ServerState.INGAME else if (it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
+                this.maxPlayers = response.players.max.toLong()
+                this.playerCount = response.players.online.toLong()
+                this.properties.put("motd", response.description.text)
+            })
+            return@thenApply server
+        }.exceptionally { _ ->
+            if (LocalDateTime.now().isAfter(
+                    it.createdAt.plusSeconds(
+                        it.properties.getOrDefault("max-startup-seconds", "120").toLong()
+                    )
+                )
+            ) {
+                stopServer(it)
+                return@exceptionally null
+            } else {
+                return@exceptionally it
             }
+        }
     }
 
     val DEFAULT_OPTIONS = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
@@ -81,8 +85,9 @@ class ServerRunner(
     }
 
     private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
-        var basicUrl = if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
-        if(!basicUrl.startsWith("/")) basicUrl = "${args.runningServersPath}/$basicUrl"
+        var basicUrl =
+            if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
+        if (!basicUrl.startsWith("/")) basicUrl = "${args.runningServersPath}/$basicUrl"
         return File(basicUrl)
     }
 
@@ -103,7 +108,7 @@ class ServerRunner(
         if (!builder.directory().exists()) builder.directory().mkdirs()
         templateCopier.copy(server, this, TemplateActionType.DEFAULT)
         templateCopier.copy(server, this, TemplateActionType.RANDOM)
-        if(!configurator.configurate(server, this)) {
+        if (!configurator.configurate(server, this)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
             Files.delete(getServerDir(server).toPath())
             return false
@@ -117,7 +122,7 @@ class ServerRunner(
     fun stopServer(server: Server): CompletableFuture<Boolean> {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         return stopServer(server.uniqueId).thenApply {
-            if(!it) return@thenApply false
+            if (!it) return@thenApply false
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
             FileUtils.deleteDirectory(getServerDir(server))
             logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
@@ -191,14 +196,17 @@ class ServerRunner(
                     var delete = false
                     var server = it
                     updateServer(it).thenApply { then ->
-                        if(then == null) delete = true
+                        if (then == null) delete = true
                         else server = then
                     }.exceptionally {
                         delete = true
                     }.get()
-                    stub.updateServer(ServerUpdateRequest.newBuilder()
-                        .setServer(server.toDefinition())
-                        .setDeleted(delete).build())
+
+                    stub.updateServer(
+                        ServerUpdateRequest.newBuilder()
+                            .setServer(server.toDefinition())
+                            .setDeleted(delete).build()
+                    )
                 }
                 delay(5000L)
             }

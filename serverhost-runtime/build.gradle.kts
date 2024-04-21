@@ -2,7 +2,6 @@ plugins {
     application
 }
 
-
 dependencies {
     api(project(":serverhost-shared"))
     api(rootProject.libs.kotlinCoroutines)

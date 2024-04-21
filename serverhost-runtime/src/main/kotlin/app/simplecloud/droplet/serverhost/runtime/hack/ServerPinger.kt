@@ -1,65 +1,140 @@
 package app.simplecloud.droplet.serverhost.runtime.hack
 
-import java.io.DataOutputStream
-import java.io.IOException
-import java.io.InputStreamReader
+import com.google.gson.*
+import java.io.*
+import java.lang.reflect.Type
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionException
-
 
 object ServerPinger {
-    fun ping(address: InetSocketAddress?): CompletableFuture<PingResult> {
+    private val gson: Gson = GsonBuilder()
+        .registerTypeAdapter(Description::class.java, Description.Deserializer())
+        .create()
+
+    fun ping(address: InetSocketAddress): CompletableFuture<StatusResponse> {
         return CompletableFuture.supplyAsync {
-            try {
-                Socket().use { socket ->
-                    socket.setSoTimeout(3000)
-                    socket.connect(address, 3000)
-                    DataOutputStream(socket.getOutputStream()).use { out ->
-                        socket.getInputStream().use { `in` ->
-                            InputStreamReader(`in`, StandardCharsets.UTF_16BE).use { reader ->
-                                out.write(byteArrayOf(0xFE.toByte(), 0x01))
-                                val packetId: Int = `in`.read()
-                                val length: Int = reader.read()
+            Socket().use { socket ->
+                socket.setSoTimeout(3000)
+                socket.connect(address, 3000)
 
-                                if (packetId != 0xFF) {
-                                    throw IOException("Invalid packet id: $packetId")
+                socket.getOutputStream().use { outputStream ->
+                    DataOutputStream(outputStream).use { dataOutputStream ->
+                        socket.getInputStream().use { inputStream ->
+                            DataInputStream(inputStream).use { dataInputStream ->
+
+                                val handshake = ByteArrayOutputStream()
+                                DataOutputStream(handshake).use { hs ->
+                                    hs.writeByte(0x00) // packet id for handshake
+                                    writeVarInt(hs, 4) // protocol version
+                                    writeVarInt(hs, address.hostString.length) // host length
+                                    hs.writeBytes(address.hostString) // host string
+                                    hs.writeShort(address.port) // port
+                                    writeVarInt(hs, 1) // state (1 for handshake)
+
+                                    writeVarInt(dataOutputStream, handshake.size()) // prepend size
+                                    dataOutputStream.write(handshake.toByteArray()) // write handshake packet
                                 }
 
-                                if (length <= 0) {
-                                    throw IOException("Invalid length: $length")
-                                }
+                                // Ping packet
+                                dataOutputStream.writeByte(0x01) // size is only 1
+                                dataOutputStream.writeByte(0x00) // packet id for ping
 
-                                val chars = CharArray(length)
-
-                                if (reader.read(chars, 0, length) != length) {
-                                    throw IOException("Premature end of stream")
-                                }
-
-                                val string = String(chars)
-
-                                if (!string.startsWith("§")) {
-                                    throw IOException("Unexpected response: $string")
-                                }
-                                val data = string.split("\u0000")
-                                val players = data[4].toInt()
-                                val maxPlayers = data[5].toInt()
-                                return@supplyAsync PingResult(players, maxPlayers, data[3])
+                                val json = fetchJson(dataInputStream)
+                                return@supplyAsync parseJsonResponse(json)
                             }
                         }
                     }
                 }
-            } catch (e: IOException) {
-                throw CompletionException(e)
             }
         }
     }
 
-    class PingResult(val players: Int, val maxPlayers: Int, val motd: String) {
-        override fun toString(): String {
-            return "PingResult{players=" + this.players + ", maxPlayers=" + this.maxPlayers + '}'
+    private fun fetchJson(dataInputStream: DataInputStream): String {
+        val id = readVarInt(dataInputStream) // Packet ID
+        if (id != 0x00) throw IOException("Invalid packetID")
+
+        val length = readVarInt(dataInputStream)
+        if (length == 0) throw IOException("Invalid string length.")
+
+        val jsonBytes = ByteArray(length)
+        dataInputStream.readFully(jsonBytes)
+        return String(jsonBytes)
+    }
+
+    private fun parseJsonResponse(json: String): StatusResponse {
+        return try {
+            gson.fromJson(json, StatusResponse::class.java)
+        } catch (ex: JsonSyntaxException) {
+            throw IOException("Error parsing JSON", ex)
+        } ?: throw IOException("Unsupported JSON format")
+    }
+
+    private fun readVarInt(dataInput: DataInput): Int {
+        var numRead = 0
+        var result = 0
+        var read: Int
+        do {
+            read = dataInput.readByte().toInt()
+            val value = read and 0x7f
+            result = result or (value shl (7 * numRead))
+            numRead++
+            if (numRead > 5) throw RuntimeException("VarInt too big")
+        } while (read and 0x80 == 0x80)
+        return result
+    }
+
+    private fun writeVarInt(out: DataOutput, value: Int) {
+        var value = value
+        do {
+            var temp = value and 0x7F
+            value = value ushr 7
+            if (value != 0) {
+                temp = temp or 0x80
+            }
+            out.writeByte(temp)
+        } while (value != 0)
+    }
+
+    data class StatusResponse(
+        val description: Description,
+        val players: Players,
+        val version: Version?,
+        val favicon: String?,
+        val time: Int?
+    )
+
+    data class Players(
+        val max: Int,
+        val online: Int,
+        val sample: List<Player>
+    )
+
+    data class Player(
+        val name: String,
+        val id: String
+    )
+
+    data class Version(
+        val name: String?,
+        val protocol: Int?
+    )
+
+    data class Description(
+        var text: String
+    ) {
+        class Deserializer : JsonDeserializer<Description> {
+            override fun deserialize(
+                json: JsonElement,
+                typeOfT: Type,
+                context: JsonDeserializationContext
+            ): Description {
+                return if (json.isJsonObject) {
+                    Description(json.asJsonObject["text"].asString)
+                } else {
+                    Description(json.asString)
+                }
+            }
         }
     }
 }
