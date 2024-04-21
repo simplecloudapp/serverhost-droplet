@@ -51,6 +51,7 @@ object ServerPinger {
     }
 
     private fun fetchJson(dataInputStream: DataInputStream): String {
+        val size = readVarInt(dataInputStream) // Size of packet
         val id = readVarInt(dataInputStream) // Packet ID
         if (id != 0x00) throw IOException("Invalid packetID")
 
