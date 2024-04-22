@@ -187,8 +187,9 @@ class ServerRunner(
             .directory(getServerDir(server, runtimeConfig))
         builder.environment()["HOST_IP"] = serverHost.host
         builder.environment()["HOST_PORT"] = serverHost.port.toString()
-        builder.environment()["CONTROLLER_IP"] = System.getenv("CONTROLLER_IP") ?: "127.0.0.1"
-        builder.environment()["CONTROLLER_PORT"] = System.getenv("CONTROLLER_PORT") ?: "5816"
+        builder.environment()["CONTROLLER_HOST"] = this.args.grpcHost
+        builder.environment()["CONTROLLER_PORT"] = this.args.grpcPort.toString()
+        builder.environment()["CONTROLLER_SECRET"] = this.args.authSecret
         return builder
     }
 
