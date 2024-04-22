@@ -1,5 +1,6 @@
 package app.simplecloud.droplet.serverhost.runtime.runner
 
+import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
@@ -28,7 +29,8 @@ class ServerRunner(
     private val configurator: ServerConfiguratorExecutor,
     private val templateCopier: TemplateCopier,
     private val serverHost: ServerHost,
-    private val args: ServerHostStartCommand
+    private val args: ServerHostStartCommand,
+    authCallCredentials: AuthCallCredentials,
 ) {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
@@ -49,6 +51,7 @@ class ServerRunner(
 
     private val channel = ServerHostRuntime.createControllerChannel()
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
+        .withCallCredentials(authCallCredentials)
 
     private fun updateServer(it: Server): CompletableFuture<Server?> {
         val address = InetSocketAddress(it.ip, it.port.toInt())

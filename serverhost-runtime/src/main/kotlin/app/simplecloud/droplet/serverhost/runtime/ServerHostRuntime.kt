@@ -1,5 +1,7 @@
 package app.simplecloud.droplet.serverhost.runtime
 
+import app.simplecloud.controller.shared.auth.AuthCallCredentials
+import app.simplecloud.controller.shared.auth.AuthSecretInterceptor
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.controller.Attacher
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostConfig
@@ -16,22 +18,23 @@ import org.apache.logging.log4j.LogManager
 import kotlin.concurrent.thread
 
 class ServerHostRuntime(
-    serverHostStartCommand: ServerHostStartCommand
+    private val serverHostStartCommand: ServerHostStartCommand
 ) {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
-    private val serverHost = ServerHostConfig.load("config.yml")
+    private val authCallCredentials = AuthCallCredentials(serverHostStartCommand.authSecret)
+
+    private val serverHost = ServerHostConfig.load("config.yml")!!
     private val serverLoader = ServerVersionLoader()
     private val configurator = ServerConfiguratorExecutor()
     private val templateCopier = TemplateCopier(serverHostStartCommand)
-    private val runner = ServerRunner(serverLoader, configurator, templateCopier, serverHost!!, serverHostStartCommand)
+    private val runner = ServerRunner(
+        serverLoader, configurator, templateCopier,
+        serverHost, serverHostStartCommand, authCallCredentials
+    )
     private val server = createGrpcServerFromEnv()
 
     fun start() {
-        if (serverHost == null) {
-            logger.error("This ServerHost is unusable, since no config was provided.")
-            return
-        }
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
         attach()
@@ -49,13 +52,14 @@ class ServerHostRuntime(
 
     private fun attach() {
         logger.info("Attaching to controller...")
-        val attacher = Attacher(serverHost!!)
+        val attacher = Attacher(authCallCredentials, serverHost)
         attacher.enforceAttach()
     }
 
     private fun createGrpcServerFromEnv(): Server {
-        return ServerBuilder.forPort(serverHost!!.port)
+        return ServerBuilder.forPort(serverHost.port)
             .addService(ServerHostService(serverHost, runner))
+            .intercept(AuthSecretInterceptor(serverHostStartCommand.authSecret))
             .build()
     }
 
