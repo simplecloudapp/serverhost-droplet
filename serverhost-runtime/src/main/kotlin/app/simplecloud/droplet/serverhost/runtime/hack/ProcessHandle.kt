@@ -9,20 +9,23 @@ import java.util.regex.Pattern
 
 object PortProcessHandle {
 
+    private const val WINDOWS_PID_INDEX = 3
+    private val windowsPattern = Pattern.compile("\\s*TCP\\s+\\S+:(\\d+)\\s+\\S+:(\\d+)\\s+\\S+\\s+(\\d+)")
+
     private val preBindPorts = ConcurrentHashMap<Int, LocalDateTime>()
 
     fun of(port: Int): Optional<ProcessHandle> {
         val os = OS.get() ?: return Optional.empty()
         val command = when (os) {
-            OS.WINDOWS -> arrayOf("netstat -ano | findstr $port")
             OS.UNIX -> arrayOf("sh", "-c", "lsof -i :$port | awk '{print \$2}'")
+            OS.WINDOWS -> arrayOf("cmd /c", "netstat -ano | findstr $port")
         }
 
         val process = Runtime.getRuntime().exec(command)
 
         val bufferedReader = process.inputReader()
         val processId = bufferedReader.useLines { lines ->
-            lines.firstNotNullOfOrNull { it.toLongOrNull() }
+            lines.firstNotNullOfOrNull { parseProcessIdOrNull(os, it) }
         }
 
         if (processId == null) {
@@ -30,6 +33,20 @@ object PortProcessHandle {
         }
 
         return ProcessHandle.of(processId)
+    }
+
+    private fun parseProcessIdOrNull(os: OS, line: String): Long? {
+        return when (os) {
+            OS.UNIX -> line.toLongOrNull()
+            OS.WINDOWS -> {
+                val matcher = windowsPattern.matcher(line)
+                if (!matcher.matches()) {
+                    return null
+                }
+
+                return matcher.group(WINDOWS_PID_INDEX).toLongOrNull()
+            }
+        }
     }
 
     fun ofOld(port: Int): Optional<ProcessHandle> {
