@@ -1,7 +1,7 @@
 package app.simplecloud.droplet.serverhost.runtime.hack
 
-import build.buf.gen.simplecloud.controller.v1.ServerDefinition
 import app.simplecloud.controller.shared.server.Server
+import build.buf.gen.simplecloud.controller.v1.ServerDefinition
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -12,6 +12,27 @@ object PortProcessHandle {
     private val preBindPorts = ConcurrentHashMap<Int, LocalDateTime>()
 
     fun of(port: Int): Optional<ProcessHandle> {
+        val os = OS.get() ?: return Optional.empty()
+        val command = when (os) {
+            OS.WINDOWS -> arrayOf("netstat -ano | findstr $port")
+            OS.UNIX -> arrayOf("sh", "-c", "lsof -i :$port | awk '{print \$2}'")
+        }
+
+        val process = Runtime.getRuntime().exec(command)
+
+        val bufferedReader = process.inputReader()
+        val processId = bufferedReader.useLines { lines ->
+            lines.firstNotNullOfOrNull { it.toLongOrNull() }
+        }
+
+        if (processId == null) {
+            return Optional.empty()
+        }
+
+        return ProcessHandle.of(processId)
+    }
+
+    fun ofOld(port: Int): Optional<ProcessHandle> {
         val os = OS.get() ?: return Optional.empty()
         val command: String
         val pattern: Pattern
