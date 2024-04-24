@@ -65,4 +65,8 @@ object PortProcessHandle {
         preBindPorts[port] = time.plusSeconds(duration)
     }
 
+    fun removePreBind(port: Int) {
+        preBindPorts.remove(port)
+    }
+
 }
