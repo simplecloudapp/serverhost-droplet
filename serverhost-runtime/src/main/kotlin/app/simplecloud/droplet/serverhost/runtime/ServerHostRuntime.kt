@@ -40,6 +40,7 @@ class ServerHostRuntime(
         attach()
         configurator.copyDefaults()
         runner.startServerStateChecker()
+        templateCopier.loadTemplates()
     }
 
     private fun startGrpcServer() {
