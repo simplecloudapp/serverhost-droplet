@@ -69,7 +69,7 @@ class ServerRunner(
                     it.createdAt.plusSeconds(
                         it.properties.getOrDefault("max-startup-seconds", "120").toLong()
                     )
-                ) //TODO: Could solve something, to test in the future: && PortProcessHandle.of(it.port.toInt()).isEmpty
+                ) && PortProcessHandle.of(it.port.toInt()).isEmpty
             ) {
                 stopServer(it)
                 return@exceptionally null
@@ -146,7 +146,6 @@ class ServerRunner(
             process.destroyForcibly()
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
         return process.onExit().thenApply {
-            println("exiting")
             running.remove(server)
             stopTries.remove(uniqueId)
             return@thenApply true
