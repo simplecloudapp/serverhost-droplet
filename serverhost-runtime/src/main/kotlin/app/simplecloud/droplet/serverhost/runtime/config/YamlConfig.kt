@@ -1,5 +1,7 @@
 package app.simplecloud.droplet.serverhost.runtime.config
 
+import app.simplecloud.droplet.serverhost.runtime.template.Template
+import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import org.spongepowered.configurate.CommentedConfigurationNode
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
@@ -7,7 +9,12 @@ import org.spongepowered.configurate.kotlin.objectMapper
 import org.spongepowered.configurate.kotlin.objectMapperFactory
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
+import java.io.FileFilter
+import java.nio.file.Path
 import java.util.*
+import kotlin.io.path.isDirectory
+import kotlin.io.path.nameWithoutExtension
+import kotlin.reflect.KClass
 
 open class YamlConfig(private val dirPath: String) {
 
@@ -21,8 +28,12 @@ open class YamlConfig(private val dirPath: String) {
             file.parentFile.mkdirs()
             file.createNewFile()
         }
+        return buildNode(file.toPath())
+    }
+
+    fun buildNode(path: Path): Pair<CommentedConfigurationNode, YamlConfigurationLoader> {
         val loader = YamlConfigurationLoader.builder()
-            .path(file.toPath())
+            .path(path)
             .defaultOptions { options ->
                 options.serializers { builder ->
                     builder.registerAnnotatedObjects(objectMapperFactory())
@@ -35,6 +46,26 @@ open class YamlConfig(private val dirPath: String) {
         val node = buildNode(path).first
         return node.get<T>()
     }
+
+    fun <T: Any> loadAll(type: KClass<T>, path: Path): MutableMap<String, T> {
+        val list = mutableMapOf<String, T>()
+        if(path.isDirectory()) {
+            path.toFile().listFiles(FileFilter {
+                it.name.endsWith(".yml") || it.isDirectory
+            })?.forEach {
+                list.putAll(loadAll(type, it.toPath()))
+            }
+        }else {
+            val node = buildNode(path).first
+            node.get(type)?.let { list[path.nameWithoutExtension] = it }
+        }
+
+        return list
+    }
+
+   inline fun <reified T : Any> loadAll(path: Path) = loadAll(T::class, path)
+
+
 
     fun load(yml: String): ConfigurationNode {
         return YamlConfigurationLoader.builder().buildAndLoadString(yml)

@@ -18,7 +18,7 @@ object PortProcessHandle {
         val os = OS.get() ?: return Optional.empty()
         val command = when (os) {
             OS.UNIX -> arrayOf("sh", "-c", "lsof -i :$port | awk '{print \$2}'")
-            OS.WINDOWS -> arrayOf("cmd /c", "netstat -ano | findstr $port")
+            OS.WINDOWS -> arrayOf("cmd", "/c", "netstat -ano | findstr $port")
         }
 
         val process = Runtime.getRuntime().exec(command)
@@ -49,38 +49,6 @@ object PortProcessHandle {
         }
     }
 
-    fun ofOld(port: Int): Optional<ProcessHandle> {
-        val os = OS.get() ?: return Optional.empty()
-        val command: String
-        val pattern: Pattern
-        val pidIndex: Int
-        when (os) {
-            OS.WINDOWS -> {
-                command = "cmd /c netstat -a -n -o | findstr $port"
-                pattern = Pattern.compile("\\s*TCP\\s+\\S+:(\\d+)\\s+\\S+:(\\d+)\\s+\\S+\\s+(\\d+)")
-                pidIndex = 3
-            }
-
-            OS.UNIX -> {
-                command = "bash -c lsof -i :$port"
-                pattern = Pattern.compile("\\S+\\s+(\\d+)\\s+.*:$port")
-                pidIndex = 1
-            }
-        }
-
-        val process = Runtime.getRuntime().exec(command)
-        val reader = process.inputReader()
-        var line = ""
-        while (reader.readLine()?.also { line = it } != null) {
-            val matcher = pattern.matcher(line)
-            if (matcher.matches()) {
-                val pid: Long = matcher.group(pidIndex).toLong()
-                return ProcessHandle.of(pid)
-            }
-        }
-        return Optional.empty()
-    }
-
     @Synchronized
     fun findNextFreePort(startPort: Int, serverDefinition: ServerDefinition): Int {
         val server = Server.fromDefinition(serverDefinition)
@@ -95,6 +63,10 @@ object PortProcessHandle {
 
     private fun addPreBind(port: Int, time: LocalDateTime, duration: Long) {
         preBindPorts[port] = time.plusSeconds(duration)
+    }
+
+    fun removePreBind(port: Int) {
+        preBindPorts.remove(port)
     }
 
 }

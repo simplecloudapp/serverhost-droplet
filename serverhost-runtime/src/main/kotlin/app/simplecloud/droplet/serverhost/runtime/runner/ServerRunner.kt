@@ -69,7 +69,7 @@ class ServerRunner(
                     it.createdAt.plusSeconds(
                         it.properties.getOrDefault("max-startup-seconds", "120").toLong()
                     )
-                )
+                ) && PortProcessHandle.of(it.port.toInt()).isEmpty
             ) {
                 stopServer(it)
                 return@exceptionally null
@@ -122,23 +122,32 @@ class ServerRunner(
         return true
     }
 
+    private val stopTries = mutableMapOf<String, Int>()
+    private val MAX_GRACEFUL_TRIES = 3
+
     fun stopServer(server: Server): CompletableFuture<Boolean> {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
-        return stopServer(server.uniqueId).thenApply {
+        return stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= MAX_GRACEFUL_TRIES).thenApply {
             if (!it) return@thenApply false
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
             FileUtils.deleteDirectory(getServerDir(server))
             logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
+            PortProcessHandle.removePreBind(server.port.toInt())
             return@thenApply true
         }
     }
 
-    private fun stopServer(uniqueId: String): CompletableFuture<Boolean> {
+    private fun stopServer(uniqueId: String, forcibly: Boolean = false): CompletableFuture<Boolean> {
         val server = getServer(uniqueId) ?: return CompletableFuture.completedFuture(false)
         val process = running[server] ?: return CompletableFuture.completedFuture(false)
-        process.destroy()
+        if(!forcibly)
+            process.destroy()
+        else
+            process.destroyForcibly()
+        stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
         return process.onExit().thenApply {
             running.remove(server)
+            stopTries.remove(uniqueId)
             return@thenApply true
         }
     }

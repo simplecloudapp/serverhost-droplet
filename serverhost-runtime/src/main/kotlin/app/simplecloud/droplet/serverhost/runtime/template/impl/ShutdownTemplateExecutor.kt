@@ -12,9 +12,9 @@ import java.io.File
 class ShutdownTemplateExecutor : TemplateActionExecutor {
     override fun execute(action: TemplateAction, server: Server, args: ServerHostStartCommand, runner: ServerRunner): Boolean {
         try {
-            val parsedTo = TemplatePlaceholders.parse(action.copyFrom, server)
+            val parsedTo = TemplatePlaceholders.parse(action.copyTo, server)
             val toPath = TemplatePlaceholders.parsePath(parsedTo, args.templatePath)
-            val parsedFrom = TemplatePlaceholders.parse(action.copyTo, server)
+            val parsedFrom = TemplatePlaceholders.parse(action.copyFrom, server)
             val fromPath = TemplatePlaceholders.parsePath(parsedFrom, runner.getServerDir(server).toPath())
             val from = fromPath.toFile()
             val to = toPath.toFile()

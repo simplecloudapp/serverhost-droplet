@@ -5,9 +5,10 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data class Template(
-    val destinations: List<TemplateAction>,
-    val randomDestinations: List<TemplateAction>,
-    val shutdownDestinations: List<TemplateAction>
+    val extends: String?,
+    val destinations: MutableList<TemplateAction>,
+    val randomDestinations: MutableList<TemplateAction>,
+    val shutdownDestinations: MutableList<TemplateAction>
 ) {
     companion object {
         val Config = YamlGroupConfig("templates")
