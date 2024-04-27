@@ -23,7 +23,7 @@ object JsonServerConfigurator : ServerConfigurator<ConfigurationNode> {
             saved = data
         } else {
             saved = existing.copy()
-            saved.mergeFrom(data)
+            data.mergeFrom(saved)
         }
         val loader = GsonConfigurationLoader.builder().file(file).build()
         loader.save(saved)

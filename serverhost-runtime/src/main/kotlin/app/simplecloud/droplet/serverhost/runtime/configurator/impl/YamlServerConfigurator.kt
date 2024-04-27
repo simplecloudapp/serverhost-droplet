@@ -23,7 +23,7 @@ object YamlServerConfigurator : ServerConfigurator<ConfigurationNode> {
             saved = data
         } else {
             saved = existing.copy()
-            saved.mergeFrom(data)
+            data.mergeFrom(saved)
         }
         val loader = YamlConfigurationLoader.builder().file(file).build()
         loader.save(saved)
