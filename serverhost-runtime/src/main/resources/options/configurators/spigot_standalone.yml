@@ -2,7 +2,7 @@ paths:
   - path: "server.properties"
     type: "PROPERTIES"
     data:
-      server-ip: "%ip%"
+      server-ip: "0.0.0.0"
       server-port: %port%
       max-players: %max-players%
       online-mode: true
