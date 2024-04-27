@@ -160,6 +160,9 @@ class ServerRunner(
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
+            templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
+            FileUtils.deleteDirectory(getServerDir(server))
+            PortProcessHandle.removePreBind(server.port.toInt())
             return false
         }
         running[server] = handle
