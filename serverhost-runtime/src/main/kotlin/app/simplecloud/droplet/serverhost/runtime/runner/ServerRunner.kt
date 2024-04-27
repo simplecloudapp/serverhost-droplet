@@ -183,6 +183,10 @@ class ServerRunner(
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
+            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
+            "%NUMERICAL_ID%" to server.numericalId.toString(),
+            "%GROUP%" to server.group,
+            "%UNIQUE_ID%" to server.uniqueId,
         )
         placeholders.putAll(server.properties.map {
             "%${it.key.uppercase().replace("-", "_")}%" to it.value
