@@ -5,6 +5,7 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
+import app.simplecloud.droplet.serverhost.runtime.hack.OS
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
@@ -56,12 +57,14 @@ class ServerRunner(
     private fun updateServer(it: Server): CompletableFuture<Server?> {
         val address = InetSocketAddress(it.ip, it.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
+            val handle = PortProcessHandle.of(it.port.toInt()).orElse(null) ?: return@thenApply it
+            running[it] = handle
             val server = Server.fromDefinition(it.toDefinition().copy {
                 this.state =
                     if (response.description.text == "INGAME") ServerState.INGAME else if (it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
                 this.maxPlayers = response.players.max.toLong()
                 this.playerCount = response.players.online.toLong()
-                this.properties.put("motd", response.description.text)
+                this.properties["motd"] = response.description.text
             })
             return@thenApply server
         }.exceptionally { _ ->
@@ -82,6 +85,13 @@ class ServerRunner(
     val DEFAULT_OPTIONS = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
     val DEFAULT_ARGUMENTS = listOf("nogui")
     val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
+    val SCREEN_EXECUTABLE: String = "screen"
+    val SCREEN_OPTIONS = mutableListOf("-dmS", "%SCREEN_NAME%", DEFAULT_EXECUTABLE).addAllOptions()
+
+    private fun MutableList<String>.addAllOptions(): MutableList<String> {
+        addAll(DEFAULT_OPTIONS)
+        return this
+    }
 
     fun getServerDir(server: Server): File {
         return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
@@ -175,9 +185,10 @@ class ServerRunner(
     }
 
     private fun buildProcess(server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
+        val os = OS.get()
         val args: JvmArguments = if (runtimeConfig?.jvm != null) runtimeConfig.jvm else JvmArguments(
-            DEFAULT_EXECUTABLE,
-            DEFAULT_OPTIONS,
+            if(os == OS.UNIX) SCREEN_EXECUTABLE else DEFAULT_EXECUTABLE,
+            if(os == OS.UNIX) SCREEN_OPTIONS else DEFAULT_OPTIONS,
             DEFAULT_ARGUMENTS
         )
         GroupRuntime.Config.save(server.group, GroupRuntime(args, null, null))
