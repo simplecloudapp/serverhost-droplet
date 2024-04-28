@@ -17,7 +17,7 @@ class ResourceCopier {
         if(!path.exists()) return
         if(!path.isDirectory()) return
         path.listDirectoryEntries().forEach {
-            it.walk(PathWalkOption.FOLLOW_LINKS).forEach { child ->
+            it.walk(PathWalkOption.BREADTH_FIRST).forEach { child ->
                 val relative = File(child.relativeTo(path).pathString).toPath()
                 if(!relative.parent.exists())
                     Files.createDirectories(relative)
