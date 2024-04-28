@@ -8,6 +8,7 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerHostConfig
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
+import app.simplecloud.droplet.serverhost.runtime.resources.ResourceCopier
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import io.grpc.ManagedChannel
@@ -33,12 +34,13 @@ class ServerHostRuntime(
         serverHost, serverHostStartCommand, authCallCredentials
     )
     private val server = createGrpcServerFromEnv()
+    private val resourceCopier = ResourceCopier()
 
     fun start() {
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
         attach()
-        configurator.copyDefaults()
+        resourceCopier.copyAll("copy")
         runner.startServerStateChecker()
         templateCopier.loadTemplates()
     }

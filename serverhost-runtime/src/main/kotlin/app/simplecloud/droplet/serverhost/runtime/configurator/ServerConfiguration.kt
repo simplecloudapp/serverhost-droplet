@@ -68,24 +68,6 @@ class ServerConfiguratorExecutor {
         }
         return true
     }
-
-    //TODO: Move to util class
-    fun copyDefaults() {
-        copyDefault("options/configurators/bungeecord.yml")
-        copyDefault("options/configurators/paper_velocity.yml")
-        copyDefault("options/configurators/spigot.yml")
-        copyDefault("options/configurators/spigot_standalone.yml")
-        copyDefault("options/configurators/velocity.yml")
-    }
-
-    //TODO: Move to util class
-    private fun copyDefault(path: String) {
-        val file = File(path)
-        if (!file.exists()) {
-            Files.createDirectories(file.parentFile.toPath())
-            Files.copy(ServerConfiguratorExecutor::class.java.getResourceAsStream("/$path")!!, File(path).toPath())
-        }
-    }
 }
 
 interface ServerConfigurator<T> {
