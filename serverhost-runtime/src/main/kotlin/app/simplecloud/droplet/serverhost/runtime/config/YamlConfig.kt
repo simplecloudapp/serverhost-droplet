@@ -1,7 +1,5 @@
 package app.simplecloud.droplet.serverhost.runtime.config
 
-import app.simplecloud.droplet.serverhost.runtime.template.Template
-import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import org.spongepowered.configurate.CommentedConfigurationNode
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
@@ -31,7 +29,7 @@ open class YamlConfig(private val dirPath: String) {
         return buildNode(file.toPath())
     }
 
-    fun buildNode(path: Path): Pair<CommentedConfigurationNode, YamlConfigurationLoader> {
+    private fun buildNode(path: Path): Pair<CommentedConfigurationNode, YamlConfigurationLoader> {
         val loader = YamlConfigurationLoader.builder()
             .path(path)
             .defaultOptions { options ->
@@ -47,15 +45,15 @@ open class YamlConfig(private val dirPath: String) {
         return node.get<T>()
     }
 
-    fun <T: Any> loadAll(type: KClass<T>, path: Path): MutableMap<String, T> {
+    fun <T : Any> loadAll(type: KClass<T>, path: Path): MutableMap<String, T> {
         val list = mutableMapOf<String, T>()
-        if(path.isDirectory()) {
+        if (path.isDirectory()) {
             path.toFile().listFiles(FileFilter {
                 it.name.endsWith(".yml") || it.isDirectory
             })?.forEach {
                 list.putAll(loadAll(type, it.toPath()))
             }
-        }else {
+        } else {
             val node = buildNode(path).first
             node.get(type)?.let { list[path.nameWithoutExtension] = it }
         }
@@ -63,8 +61,7 @@ open class YamlConfig(private val dirPath: String) {
         return list
     }
 
-   inline fun <reified T : Any> loadAll(path: Path) = loadAll(T::class, path)
-
+    inline fun <reified T : Any> loadAll(path: Path) = loadAll(T::class, path)
 
 
     fun load(yml: String): ConfigurationNode {
@@ -92,15 +89,6 @@ open class YamlConfig(private val dirPath: String) {
         val file = File(dirPath, path)
         return loadFile(file)
     }
-
-    fun toTemplatedString(node: ConfigurationNode): String {
-        return YamlConfigurationLoader.builder().buildAndSaveString(node)
-    }
-
-    fun <T> save(obj: T) {
-        save(null, obj)
-    }
-
     open fun <T> save(path: String?, obj: T) {
         val pair = buildNode(path)
         pair.first.set(obj)

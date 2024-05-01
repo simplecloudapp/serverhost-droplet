@@ -12,14 +12,14 @@ class ResourceCopier {
     fun copyAll(dir: String) {
         val url = ResourceCopier::class.java.getResource("/$dir") ?: return
         val uri = url.toURI()
-        val fileSystem = if(uri.scheme == "jar") createFileSystem(uri) else null
+        val fileSystem = if (uri.scheme == "jar") createFileSystem(uri) else null
         val path = Paths.get(uri)
-        if(!path.exists()) return
-        if(!path.isDirectory()) return
+        if (!path.exists()) return
+        if (!path.isDirectory()) return
         path.listDirectoryEntries().forEach {
             it.walk(PathWalkOption.BREADTH_FIRST).forEach { child ->
                 val relative = File(child.relativeTo(path).pathString).toPath()
-                if(!relative.parent.exists())
+                if (!relative.parent.exists())
                     Files.createDirectories(relative)
                 Files.copy(child, relative, StandardCopyOption.REPLACE_EXISTING)
             }

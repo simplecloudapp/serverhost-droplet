@@ -82,14 +82,14 @@ class ServerRunner(
         }
     }
 
-    val DEFAULT_OPTIONS = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
-    val DEFAULT_ARGUMENTS = listOf("nogui")
-    val DEFAULT_EXECUTABLE: String = File(System.getProperty("java.home"), "bin/java").absolutePath
-    val SCREEN_EXECUTABLE: String = "screen"
-    val SCREEN_OPTIONS = mutableListOf("-dmS", "%SCREEN_NAME%", DEFAULT_EXECUTABLE).addAllOptions()
+    private val defaultOptions = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
+    private val defaultArguments = listOf("nogui")
+    private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
+    private val screenExecutable: String = "screen"
+    private val screenOptions = mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable).addAllOptions()
 
     private fun MutableList<String>.addAllOptions(): MutableList<String> {
-        addAll(DEFAULT_OPTIONS)
+        addAll(defaultOptions)
         return this
     }
 
@@ -133,11 +133,11 @@ class ServerRunner(
     }
 
     private val stopTries = mutableMapOf<String, Int>()
-    private val MAX_GRACEFUL_TRIES = 3
+    private val maxGracefulTries = 3
 
     fun stopServer(server: Server): CompletableFuture<Boolean> {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
-        return stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= MAX_GRACEFUL_TRIES).thenApply {
+        return stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries).thenApply {
             if (!it) return@thenApply false
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
             FileUtils.deleteDirectory(getServerDir(server))
@@ -150,7 +150,7 @@ class ServerRunner(
     private fun stopServer(uniqueId: String, forcibly: Boolean = false): CompletableFuture<Boolean> {
         val server = getServer(uniqueId) ?: return CompletableFuture.completedFuture(false)
         val process = running[server] ?: return CompletableFuture.completedFuture(false)
-        if(!forcibly)
+        if (!forcibly)
             process.destroy()
         else
             process.destroyForcibly()
@@ -187,13 +187,13 @@ class ServerRunner(
     private fun buildProcess(server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
         val os = OS.get()
         val args: JvmArguments = if (runtimeConfig?.jvm != null) runtimeConfig.jvm else JvmArguments(
-            if(os == OS.UNIX) SCREEN_EXECUTABLE else DEFAULT_EXECUTABLE,
-            if(os == OS.UNIX) SCREEN_OPTIONS else DEFAULT_OPTIONS,
-            DEFAULT_ARGUMENTS
+            if (os == OS.UNIX) screenExecutable else defaultExecutable,
+            if (os == OS.UNIX) screenOptions else defaultOptions,
+            defaultArguments
         )
         GroupRuntime.Config.save(server.group, GroupRuntime(args, null, null))
         val command = mutableListOf<String>()
-        command.add(args.executable ?: DEFAULT_EXECUTABLE)
+        command.add(args.executable ?: defaultExecutable)
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
@@ -234,7 +234,11 @@ class ServerRunner(
         map["SIMPLECLOUD_TYPE"] = this.type.toString()
         map["SIMPLECLOUD_MAX_MEMORY"] = this.maxMemory.toString()
         map["SIMPLECLOUD_MIN_MEMORY"] = this.minMemory.toString()
-        map.putAll(this.properties.map { "SIMPLECLOUD_${it.key.uppercase().replace(" ", "_").replace("-", "_")}" to it.value })
+        map.putAll(this.properties.map {
+            "SIMPLECLOUD_${
+                it.key.uppercase().replace(" ", "_").replace("-", "_")
+            }" to it.value
+        })
         return map
     }
 

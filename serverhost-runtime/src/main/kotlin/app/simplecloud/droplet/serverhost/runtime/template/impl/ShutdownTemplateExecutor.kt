@@ -7,10 +7,14 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplateAction
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionExecutor
 import app.simplecloud.droplet.serverhost.runtime.template.TemplatePlaceholders
 import org.apache.commons.io.FileUtils
-import java.io.File
 
 class ShutdownTemplateExecutor : TemplateActionExecutor {
-    override fun execute(action: TemplateAction, server: Server, args: ServerHostStartCommand, runner: ServerRunner): Boolean {
+    override fun execute(
+        action: TemplateAction,
+        server: Server,
+        args: ServerHostStartCommand,
+        runner: ServerRunner
+    ): Boolean {
         try {
             val parsedTo = TemplatePlaceholders.parse(action.copyTo, server)
             val toPath = TemplatePlaceholders.parsePath(parsedTo, args.templatePath)

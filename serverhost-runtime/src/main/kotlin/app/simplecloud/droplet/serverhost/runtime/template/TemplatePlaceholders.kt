@@ -16,15 +16,12 @@ object TemplatePlaceholders {
         return Paths.get(prefix.pathString, path.pathString)
     }
 
-    fun parsePath(path: String, prefix: String): String {
-        if (path.startsWith("/")) return path
-        return "$prefix/$path"
-    }
-
     fun parse(content: String, context: Server): Path {
-        return Paths.get(content
-            .replace(SERVER, "${context.group}-${context.numericalId}")
-            .replace(NUMERICAL_ID, "${context.numericalId}")
-            .replace(GROUP, context.group))
+        return Paths.get(
+            content
+                .replace(SERVER, "${context.group}-${context.numericalId}")
+                .replace(NUMERICAL_ID, "${context.numericalId}")
+                .replace(GROUP, context.group)
+        )
     }
 }

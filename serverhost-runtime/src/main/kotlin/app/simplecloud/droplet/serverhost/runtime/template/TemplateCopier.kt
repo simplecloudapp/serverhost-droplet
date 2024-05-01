@@ -15,18 +15,17 @@ class TemplateCopier(
 
     fun copy(server: Server, runner: ServerRunner, actionType: TemplateActionType) {
         var templateId = server.properties["template-id"]
-        if(templateId == null) {
+        if (templateId == null) {
             templateId = server.group
             Template.Config.load<Template>(templateId)
             loadTemplates()
         }
         val template = loadTemplate(templateId)
         when (actionType) {
-            TemplateActionType.DEFAULT -> {
-                template?.destinations?.forEach {
-                    actionType.executor().execute(it, server, args, runner)
-                }
+            TemplateActionType.DEFAULT -> template?.destinations?.forEach {
+                actionType.executor().execute(it, server, args, runner)
             }
+
             TemplateActionType.RANDOM -> template?.randomDestinations?.forEach {
                 actionType.executor().execute(it, server, args, runner)
             }
@@ -37,20 +36,24 @@ class TemplateCopier(
         }
     }
 
-    private fun loadTemplate(id: String, loaded: MutableList<String> = mutableListOf(), current: Template? = null): Template? {
-        if(loaded.contains(id)) {
+    private fun loadTemplate(
+        id: String,
+        loaded: MutableList<String> = mutableListOf(),
+        current: Template? = null
+    ): Template? {
+        if (loaded.contains(id)) {
             logger.warn("Template $id could not be loaded correctly. Did you make your template recursive by accident?")
             return current
         }
         val template = loadedTemplates.getOrDefault(id, null) ?: return current
         val existing = current ?: template
-        if(existing != template) {
+        if (existing != template) {
             existing.destinations.addAll(template.destinations)
             existing.randomDestinations.addAll(template.randomDestinations)
             existing.shutdownDestinations.addAll(template.shutdownDestinations)
         }
         loaded.add(id)
-        if(template.extends != null) {
+        if (template.extends != null) {
             return loadTemplate(template.extends, loaded, existing)
         }
         return existing

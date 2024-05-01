@@ -9,7 +9,12 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplatePlaceholders
 import org.apache.commons.io.FileUtils
 
 class DefaultTemplateExecutor : TemplateActionExecutor {
-    override fun execute(action: TemplateAction, server: Server, args: ServerHostStartCommand, runner: ServerRunner): Boolean {
+    override fun execute(
+        action: TemplateAction,
+        server: Server,
+        args: ServerHostStartCommand,
+        runner: ServerRunner
+    ): Boolean {
         try {
             val parsedFrom = TemplatePlaceholders.parse(action.copyFrom, server)
             val fromPath = TemplatePlaceholders.parsePath(parsedFrom, args.templatePath)

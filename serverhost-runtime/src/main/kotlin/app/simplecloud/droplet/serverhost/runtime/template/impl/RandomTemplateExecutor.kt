@@ -3,16 +3,19 @@ package app.simplecloud.droplet.serverhost.runtime.template.impl
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
-import app.simplecloud.droplet.serverhost.runtime.template.Template
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateAction
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionExecutor
 import app.simplecloud.droplet.serverhost.runtime.template.TemplatePlaceholders
 import org.apache.commons.io.FileUtils
-import java.io.File
 import kotlin.random.Random
 
 class RandomTemplateExecutor : TemplateActionExecutor {
-    override fun execute(action: TemplateAction, server: Server, args: ServerHostStartCommand, runner: ServerRunner): Boolean {
+    override fun execute(
+        action: TemplateAction,
+        server: Server,
+        args: ServerHostStartCommand,
+        runner: ServerRunner
+    ): Boolean {
         try {
             val parsedFrom = TemplatePlaceholders.parse(action.copyFrom, server)
             val fromPath = TemplatePlaceholders.parsePath(parsedFrom, args.templatePath)
