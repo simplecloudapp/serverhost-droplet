@@ -24,6 +24,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
+import javax.sound.sampled.Port
 
 class ServerRunner(
     private val serverVersionLoader: ServerVersionLoader,
@@ -59,30 +60,32 @@ class ServerRunner(
         return ServerPinger.ping(address).thenApply { response ->
             val handle = PortProcessHandle.of(it.port.toInt()).orElse(null) ?: return@thenApply it
             running[it] = handle
+            PortProcessHandle.removePreBind(it.port.toInt())
             val server = Server.fromDefinition(it.toDefinition().copy {
                 this.state =
-                    if (response.description.text == "INGAME") ServerState.INGAME else if (it.state == ServerState.STARTING) ServerState.AVAILABLE else it.state
+                    if (response.description.text == "INGAME")
+                        ServerState.INGAME
+                    else if (it.state == ServerState.STARTING)
+                        ServerState.AVAILABLE
+                    else
+                        it.state
                 this.maxPlayers = response.players.max.toLong()
                 this.playerCount = response.players.online.toLong()
                 this.properties["motd"] = response.description.text
             })
             return@thenApply server
         }.exceptionally { _ ->
-            if (LocalDateTime.now().isAfter(
-                    it.createdAt.plusSeconds(
-                        it.properties.getOrDefault("max-startup-seconds", "120").toLong()
-                    )
-                ) && PortProcessHandle.of(it.port.toInt()).isEmpty
-            ) {
+            if (!PortProcessHandle.isPortBound(it.port.toInt())) {
                 stopServer(it)
                 return@exceptionally null
-            } else {
-                return@exceptionally it
             }
+
+            return@exceptionally it
         }
     }
 
-    private val defaultOptions = listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
+    private val defaultOptions =
+        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
     private val defaultArguments = listOf("nogui")
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"

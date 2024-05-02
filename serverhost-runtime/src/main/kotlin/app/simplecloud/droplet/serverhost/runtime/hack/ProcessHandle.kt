@@ -54,7 +54,7 @@ object PortProcessHandle {
         val server = Server.fromDefinition(serverDefinition)
         var port = startPort
         val time = LocalDateTime.now()
-        while (!of(port).isEmpty || time.isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))) {
+        while (isPortBound(port)) {
             port++
         }
         addPreBind(port, time, server.properties.getOrDefault("max-startup-seconds", "120").toLong())
@@ -63,6 +63,10 @@ object PortProcessHandle {
 
     private fun addPreBind(port: Int, time: LocalDateTime, duration: Long) {
         preBindPorts[port] = time.plusSeconds(duration)
+    }
+
+    fun isPortBound(port: Int): Boolean {
+        return !of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
     }
 
     fun removePreBind(port: Int) {
