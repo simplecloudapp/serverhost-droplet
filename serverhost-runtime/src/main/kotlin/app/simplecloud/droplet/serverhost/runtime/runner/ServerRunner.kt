@@ -58,6 +58,7 @@ class ServerRunner(
     private fun updateServer(it: Server): CompletableFuture<Server?> {
         val address = InetSocketAddress(it.ip, it.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
+            println(response)
             val handle = PortProcessHandle.of(it.port.toInt()).orElse(null) ?: return@thenApply it
             running[it] = handle
             PortProcessHandle.removePreBind(it.port.toInt())

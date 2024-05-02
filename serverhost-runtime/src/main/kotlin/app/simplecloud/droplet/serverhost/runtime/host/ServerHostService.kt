@@ -3,10 +3,10 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
-import app.simplecloud.controller.shared.status.ApiResponse
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import build.buf.gen.simplecloud.controller.v1.*
+import io.grpc.Status
 import io.grpc.stub.StreamObserver
 
 class ServerHostService(
@@ -37,16 +37,34 @@ class ServerHostService(
         responseObserver.onCompleted()
     }
 
-    override fun stopServer(request: ServerDefinition, responseObserver: StreamObserver<StatusResponse>) {
-        runner.stopServer(Server.fromDefinition(request)).thenApply {
-            responseObserver.onNext(ApiResponse(if (it) "success" else "error").toDefinition())
+    override fun stopServer(request: ServerDefinition, responseObserver: StreamObserver<ServerDefinition>) {
+        runner.stopServer(Server.fromDefinition(request)).thenApply {success ->
+            if(!success) {
+                responseObserver.onError(
+                    Status.INTERNAL
+                        .withDescription("Could not stop server")
+                        .asRuntimeException()
+                )
+                return@thenApply
+            }
+            responseObserver.onNext(request)
             responseObserver.onCompleted()
         }
 
     }
 
-    override fun reattachServer(request: ServerDefinition, responseObserver: StreamObserver<StatusResponse>) {
-        responseObserver.onNext(ApiResponse(if (runner.reattachServer(Server.fromDefinition(request))) "success" else "error").toDefinition())
+    override fun reattachServer(request: ServerDefinition, responseObserver: StreamObserver<ServerDefinition>) {
+        val server = Server.fromDefinition(request)
+        val success = runner.reattachServer(server)
+        if(!success) {
+            responseObserver.onError(
+                Status.INTERNAL
+                    .withDescription("Could not reattach server")
+                    .asRuntimeException()
+            )
+            return
+        }
+        responseObserver.onNext(server.toDefinition())
         responseObserver.onCompleted()
     }
 

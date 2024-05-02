@@ -3,7 +3,6 @@ package app.simplecloud.droplet.serverhost.runtime.controller
 import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.future.toCompletable
 import app.simplecloud.controller.shared.host.ServerHost
-import app.simplecloud.controller.shared.status.ApiResponse
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import io.grpc.ConnectivityState
@@ -12,7 +11,7 @@ import org.apache.logging.log4j.LogManager
 import java.util.concurrent.CompletableFuture
 
 class Attacher(
-    private val authCallCredentials: AuthCallCredentials,
+    authCallCredentials: AuthCallCredentials,
     private val serverHost: ServerHost
 ) {
 
@@ -25,7 +24,7 @@ class Attacher(
     private fun attach(): CompletableFuture<Boolean> {
         return stub.attachServerHost(serverHost.toDefinition()).toCompletable().thenApply {
             logger.info("Successfully attached to Controller.")
-            return@thenApply ApiResponse.fromDefinition(it).status == "success"
+            return@thenApply true
         }.exceptionally { return@exceptionally false }
     }
 
