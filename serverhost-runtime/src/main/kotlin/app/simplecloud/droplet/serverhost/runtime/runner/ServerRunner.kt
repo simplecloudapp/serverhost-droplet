@@ -21,7 +21,6 @@ import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
 import java.net.InetSocketAddress
-import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 
 class ServerRunner(
@@ -35,50 +34,50 @@ class ServerRunner(
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
 
-    private val running = mutableMapOf<Server, ProcessHandle>()
+    private val serverToProcessHandle = mutableMapOf<Server, ProcessHandle>()
 
     private fun containsServer(server: Server): Boolean {
-        return running.any { it.key.uniqueId == server.uniqueId }
+        return serverToProcessHandle.any { it.key.uniqueId == server.uniqueId }
     }
 
     private fun containsServer(uniqueId: String): Boolean {
-        return running.any { it.key.uniqueId == uniqueId }
+        return serverToProcessHandle.any { it.key.uniqueId == uniqueId }
     }
 
     private fun getServer(uniqueId: String): Server? {
-        return running.keys.find { it.uniqueId == uniqueId }
+        return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
     private val channel = ServerHostRuntime.createControllerChannel()
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
         .withCallCredentials(authCallCredentials)
 
-    private fun updateServer(it: Server): CompletableFuture<Server?> {
-        val address = InetSocketAddress(it.ip, it.port.toInt())
+    private fun updateServer(server: Server): CompletableFuture<Server?> {
+        val address = InetSocketAddress(server.ip, server.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
-            val handle = PortProcessHandle.of(it.port.toInt()).orElse(null) ?: return@thenApply it
-            running[it] = handle
-            PortProcessHandle.removePreBind(it.port.toInt())
-            val server = Server.fromDefinition(it.toDefinition().copy {
+            val handle = PortProcessHandle.of(server.port.toInt()).orElse(null) ?: return@thenApply server
+            serverToProcessHandle[server] = handle
+            PortProcessHandle.removePreBind(server.port.toInt())
+            val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.state =
                     if (response.description.text == "INGAME")
                         ServerState.INGAME
-                    else if (it.state == ServerState.STARTING)
+                    else if (server.state == ServerState.STARTING)
                         ServerState.AVAILABLE
                     else
-                        it.state
+                        server.state
                 this.maxPlayers = response.players.max.toLong()
                 this.playerCount = response.players.online.toLong()
                 this.properties["motd"] = response.description.text
             })
-            return@thenApply server
+            return@thenApply copiedServer
         }.exceptionally { _ ->
-            if (!PortProcessHandle.isPortBound(it.port.toInt())) {
-                stopServer(it)
+            if (!PortProcessHandle.isPortBound(server.port.toInt())) {
+                stopServer(server)
                 return@exceptionally null
             }
 
-            return@exceptionally it
+            return@exceptionally server
         }
     }
 
@@ -87,21 +86,20 @@ class ServerRunner(
     private val defaultArguments = listOf("nogui")
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
-    private val screenOptions = mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable).addAllOptions()
-
-    private fun MutableList<String>.addAllOptions(): MutableList<String> {
-        addAll(defaultOptions)
-        return this
-    }
+    private val screenOptions =
+        mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
     fun getServerDir(server: Server): File {
         return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
     }
 
     private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
-        var basicUrl =
-            if (runtimeConfig?.parentDir != null) runtimeConfig.parentDir else "${server.group}/${server.group}-${server.numericalId}"
-        if (!basicUrl.startsWith("/")) basicUrl = "${args.runningServersPath}/$basicUrl"
+        var basicUrl = runtimeConfig?.parentDir ?: "${server.group}/${server.group}-${server.numericalId}"
+
+        if (!basicUrl.startsWith("/")) {
+            basicUrl = "${args.runningServersPath}/$basicUrl"
+        }
+
         return File(basicUrl)
     }
 
@@ -119,16 +117,20 @@ class ServerRunner(
         }
         serverVersionLoader.download(server)
         val builder = buildProcess(server, runtimeConfig)
-        if (!builder.directory().exists()) builder.directory().mkdirs()
+
+        if (!builder.directory().exists()) {
+            builder.directory().mkdirs()
+        }
         templateCopier.copy(server, this, TemplateActionType.DEFAULT)
         templateCopier.copy(server, this, TemplateActionType.RANDOM)
+
         if (!configurator.configurate(server, this)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
-            Files.delete(getServerDir(server).toPath())
+            FileUtils.deleteDirectory(getServerDir(server))
             return false
         }
         val process = builder.start()
-        running[server] = process.toHandle()
+        serverToProcessHandle[server] = process.toHandle()
         logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
         return true
     }
@@ -150,14 +152,14 @@ class ServerRunner(
 
     private fun stopServer(uniqueId: String, forcibly: Boolean = false): CompletableFuture<Boolean> {
         val server = getServer(uniqueId) ?: return CompletableFuture.completedFuture(false)
-        val process = running[server] ?: return CompletableFuture.completedFuture(false)
+        val process = serverToProcessHandle[server] ?: return CompletableFuture.completedFuture(false)
         if (!forcibly)
             process.destroy()
         else
             process.destroyForcibly()
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
         return process.onExit().thenApply {
-            running.remove(server)
+            serverToProcessHandle.remove(server)
             stopTries.remove(uniqueId)
             return@thenApply true
         }
@@ -176,7 +178,7 @@ class ServerRunner(
             PortProcessHandle.removePreBind(server.port.toInt())
             return false
         }
-        running[server] = handle
+        serverToProcessHandle[server] = handle
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully reattached on PID ${handle.pid()}")
         return true
     }
@@ -187,14 +189,11 @@ class ServerRunner(
 
     private fun buildProcess(server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
         val os = OS.get()
-        val args: JvmArguments = if (runtimeConfig?.jvm != null) runtimeConfig.jvm else JvmArguments(
-            if (os == OS.UNIX) screenExecutable else defaultExecutable,
-            if (os == OS.UNIX) screenOptions else defaultOptions,
-            defaultArguments
-        )
-        GroupRuntime.Config.save(server.group, GroupRuntime(args, null, null))
+        val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments(os)
+        //TODO exist check before save
+        GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
         val command = mutableListOf<String>()
-        command.add(args.executable ?: defaultExecutable)
+        command.add(jvmArgs.executable ?: defaultExecutable)
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
@@ -207,9 +206,16 @@ class ServerRunner(
             "%${it.key.uppercase().replace("-", "_")}%" to it.value
         })
 
-        if (!args.options.isNullOrEmpty()) command.addAllWithPlaceholders(args.options, placeholders)
+        if (!jvmArgs.options.isNullOrEmpty()) {
+            command.addAllWithPlaceholders(jvmArgs.options, placeholders)
+        }
+
         command.add(serverVersionLoader.getServerJar(server).absolutePath)
-        if (!args.arguments.isNullOrEmpty()) command.addAllWithPlaceholders(args.arguments, placeholders)
+
+        if (!jvmArgs.arguments.isNullOrEmpty()) {
+            command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
+        }
+
         val builder = ProcessBuilder()
             .command(command)
             .directory(getServerDir(server, runtimeConfig))
@@ -220,6 +226,14 @@ class ServerRunner(
         builder.environment()["CONTROLLER_SECRET"] = this.args.authSecret
         builder.environment().putAll(server.toEnv())
         return builder
+    }
+
+    private fun crateDefaultJvmArguments(os: OS?): JvmArguments {
+        return JvmArguments(
+            if (os == OS.UNIX) screenExecutable else defaultExecutable,
+            if (os == OS.UNIX) screenOptions else defaultOptions,
+            defaultArguments
+        )
     }
 
     private fun Server.toEnv(): MutableMap<String, String> {
@@ -246,7 +260,7 @@ class ServerRunner(
     fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.Default).launch {
             while (isActive) {
-                running.keys.toList().forEach {
+                serverToProcessHandle.keys.toList().forEach {
                     var delete = false
                     var server = it
                     updateServer(it).thenApply { then ->

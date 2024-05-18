@@ -1,7 +1,6 @@
 package app.simplecloud.droplet.serverhost.runtime.template
 
 import app.simplecloud.droplet.serverhost.runtime.template.impl.DefaultTemplateExecutor
-import app.simplecloud.droplet.serverhost.runtime.template.impl.RandomTemplateExecutor
 import app.simplecloud.droplet.serverhost.runtime.template.impl.ShutdownTemplateExecutor
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
@@ -12,28 +11,12 @@ data class TemplateAction(
     val copyTo: String,
 )
 
-enum class TemplateActionType {
-    DEFAULT {
-        private val executor = DefaultTemplateExecutor()
+enum class TemplateActionType(
+    val executor: TemplateActionExecutor,
+) {
 
-        override fun executor(): TemplateActionExecutor {
-            return executor
-        }
-    },
-    RANDOM {
-        private val executor = RandomTemplateExecutor()
+    DEFAULT(DefaultTemplateExecutor()),
+    RANDOM(DefaultTemplateExecutor()),
+    SHUTDOWN(ShutdownTemplateExecutor());
 
-        override fun executor(): TemplateActionExecutor {
-            return executor
-        }
-    },
-    SHUTDOWN {
-        private val executor = ShutdownTemplateExecutor()
-
-        override fun executor(): TemplateActionExecutor {
-            return executor
-        }
-    };
-
-    abstract fun executor(): TemplateActionExecutor
 }

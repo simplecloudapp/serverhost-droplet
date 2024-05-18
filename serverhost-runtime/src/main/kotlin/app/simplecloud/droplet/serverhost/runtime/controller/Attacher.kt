@@ -15,7 +15,6 @@ class Attacher(
     private val serverHost: ServerHost
 ) {
 
-
     private val channel = ServerHostRuntime.createControllerChannel()
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
         .withCallCredentials(authCallCredentials)
@@ -27,7 +26,6 @@ class Attacher(
             return@thenApply true
         }.exceptionally { return@exceptionally false }
     }
-
 
     fun enforceAttach(): Job {
         return CoroutineScope(Dispatchers.Default).launch {
