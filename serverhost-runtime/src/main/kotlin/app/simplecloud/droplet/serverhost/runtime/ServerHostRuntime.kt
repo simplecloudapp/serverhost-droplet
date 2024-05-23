@@ -42,6 +42,7 @@ class ServerHostRuntime(
         attach()
         resourceCopier.copyAll("copy")
         runner.startServerStateChecker()
+        templateCopier.loadTemplates()
     }
 
     private fun startGrpcServer() {

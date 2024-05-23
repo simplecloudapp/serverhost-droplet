@@ -23,20 +23,35 @@ object TomlServerConfigurator : ServerConfigurator<MutableMap<String, Any>> {
 
     override fun save(data: MutableMap<String, Any>, file: File) {
         val existing = load(file) ?: mutableMapOf()
-        data.tomlCombine(existing)
+        val mergedMap = mergeMaps(existing, data)
         val writer = TomlWriter()
-        writer.write(data, file)
+        writer.write(mergedMap, file)
     }
 
+    private fun mergeMaps(first: Map<String, Any>, second: Map<String, Any>): Map<String, Any> {
+        val result = first.toMutableMap()
+
+        for ((key, secondValue) in second) {
+            val firstValue = result[key]
+            if (firstValue is Map<*, *> && secondValue is Map<*, *>) {
+                @Suppress("UNCHECKED_CAST")
+                result[key] = mergeMaps(firstValue as Map<String, Any>, secondValue as Map<String, Any>)
+            } else {
+                result[key] = secondValue
+            }
+        }
+
+        return result
+    }
+
+    // TODO: do we need this?
     private fun MutableMap<String, Any>.tomlCombine(map: MutableMap<String, Any>) {
         map.keys.forEach {
             if (!this.containsKey(it)) {
-                println("1 f $it f")
                 this[it] = map[it]!!
                 return@forEach
             }
             if (this[it] !is MutableMap<*, *>) {
-                println("2 f $it f")
                 this[it] = map[it]!!
                 return@forEach
             }
