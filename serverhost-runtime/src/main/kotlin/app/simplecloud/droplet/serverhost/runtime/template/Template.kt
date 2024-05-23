@@ -13,4 +13,10 @@ data class Template(
     companion object {
         val Config = YamlGroupConfig("templates")
     }
+
+    fun merge(extending: Template) {
+        extending.destinations.addAll(this.destinations)
+        extending.randomDestinations.addAll(this.randomDestinations)
+        extending.shutdownDestinations.addAll(this.shutdownDestinations)
+    }
 }

@@ -23,7 +23,7 @@ object TomlServerConfigurator : ServerConfigurator<MutableMap<String, Any>> {
 
     override fun save(data: MutableMap<String, Any>, file: File) {
         val existing = load(file) ?: mutableMapOf()
-        existing.tomlCombine(data)
+        data.tomlCombine(existing)
         val writer = TomlWriter()
         writer.write(data, file)
     }
@@ -31,10 +31,12 @@ object TomlServerConfigurator : ServerConfigurator<MutableMap<String, Any>> {
     private fun MutableMap<String, Any>.tomlCombine(map: MutableMap<String, Any>) {
         map.keys.forEach {
             if (!this.containsKey(it)) {
+                println("1 f $it f")
                 this[it] = map[it]!!
                 return@forEach
             }
             if (this[it] !is MutableMap<*, *>) {
+                println("2 f $it f")
                 this[it] = map[it]!!
                 return@forEach
             }
