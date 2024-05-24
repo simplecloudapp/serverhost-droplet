@@ -24,7 +24,6 @@ import java.net.InetSocketAddress
 import java.util.concurrent.CompletableFuture
 
 class ServerRunner(
-    private val serverVersionLoader: ServerVersionLoader,
     private val configurator: ServerConfiguratorExecutor,
     private val templateCopier: TemplateCopier,
     private val serverHost: ServerHost,
@@ -115,7 +114,7 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group not supported by this ServerHost.")
             return false
         }
-        serverVersionLoader.download(server)
+
         val builder = buildProcess(server, runtimeConfig)
 
         if (!builder.directory().exists()) {
@@ -210,7 +209,7 @@ class ServerRunner(
             command.addAllWithPlaceholders(jvmArgs.options, placeholders)
         }
 
-        command.add(serverVersionLoader.getServerJar(server).absolutePath)
+        command.add(ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).absolutePath)
 
         if (!jvmArgs.arguments.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)

@@ -6,7 +6,6 @@ import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurato
 import app.simplecloud.droplet.serverhost.runtime.controller.Attacher
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostConfig
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
-import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.resources.ResourceCopier
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
@@ -26,12 +25,14 @@ class ServerHostRuntime(
     private val authCallCredentials = AuthCallCredentials(serverHostStartCommand.authSecret)
 
     private val serverHost = ServerHostConfig.load("config.yml")!!
-    private val serverLoader = ServerVersionLoader()
     private val configurator = ServerConfiguratorExecutor()
     private val templateCopier = TemplateCopier(serverHostStartCommand)
     private val runner = ServerRunner(
-        serverLoader, configurator, templateCopier,
-        serverHost, serverHostStartCommand, authCallCredentials
+        configurator,
+        templateCopier,
+        serverHost,
+        serverHostStartCommand,
+        authCallCredentials
     )
     private val server = createGrpcServerFromEnv()
     private val resourceCopier = ResourceCopier()
