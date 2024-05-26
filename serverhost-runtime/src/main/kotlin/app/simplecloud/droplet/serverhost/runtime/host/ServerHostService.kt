@@ -24,7 +24,8 @@ class ServerHostService(
         })
 
         try {
-            if (!runner.startServer(server)) {
+            val startSuccess = runner.startServer(server)
+            if (!startSuccess) {
                 responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))
                 return
             }
@@ -38,7 +39,7 @@ class ServerHostService(
     }
 
     override fun stopServer(request: ServerDefinition, responseObserver: StreamObserver<ServerDefinition>) {
-        runner.stopServer(Server.fromDefinition(request)).thenApply {success ->
+        runner.stopServer(Server.fromDefinition(request)).thenApply { success ->
             if(!success) {
                 responseObserver.onError(
                     Status.INTERNAL

@@ -31,6 +31,21 @@ class ServerRunner(
     authCallCredentials: AuthCallCredentials,
 ) {
 
+    private val defaultOptions =
+        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
+    private val defaultArguments = listOf("nogui")
+    private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
+    private val screenExecutable: String = "screen"
+    private val screenOptions =
+        mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
+
+    private val channel = ServerHostRuntime.createControllerChannel()
+    private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
+        .withCallCredentials(authCallCredentials)
+
+    private val stopTries = mutableMapOf<String, Int>()
+    private val maxGracefulTries = 3
+
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
 
     private val serverToProcessHandle = mutableMapOf<Server, ProcessHandle>()
@@ -46,10 +61,6 @@ class ServerRunner(
     private fun getServer(uniqueId: String): Server? {
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
-
-    private val channel = ServerHostRuntime.createControllerChannel()
-    private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
-        .withCallCredentials(authCallCredentials)
 
     private fun updateServer(server: Server): CompletableFuture<Server?> {
         val address = InetSocketAddress(server.ip, server.port.toInt())
@@ -71,7 +82,8 @@ class ServerRunner(
             })
             return@thenApply copiedServer
         }.exceptionally { _ ->
-            if (!PortProcessHandle.isPortBound(server.port.toInt())) {
+            val portBound = PortProcessHandle.isPortBound(server.port.toInt())
+            if (!portBound) {
                 stopServer(server)
                 return@exceptionally null
             }
@@ -79,14 +91,6 @@ class ServerRunner(
             return@exceptionally server
         }
     }
-
-    private val defaultOptions =
-        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
-    private val defaultArguments = listOf("nogui")
-    private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
-    private val screenExecutable: String = "screen"
-    private val screenOptions =
-        mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
     fun getServerDir(server: Server): File {
         return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
@@ -122,8 +126,8 @@ class ServerRunner(
         }
         templateCopier.copy(server, this, TemplateActionType.DEFAULT)
         templateCopier.copy(server, this, TemplateActionType.RANDOM)
-
-        if (!configurator.configurate(server, this)) {
+        val configuratorSuccess = configurator.configurate(server, this)
+        if (!configuratorSuccess) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
             FileUtils.deleteDirectory(getServerDir(server))
             return false
@@ -133,9 +137,6 @@ class ServerRunner(
         logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
         return true
     }
-
-    private val stopTries = mutableMapOf<String, Int>()
-    private val maxGracefulTries = 3
 
     fun stopServer(server: Server): CompletableFuture<Boolean> {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
