@@ -77,7 +77,7 @@ open class YamlConfig(private val dirPath: String) {
         return objectMapper<T>().load(node)
     }
 
-    fun loadFile(file: File): String? {
+    private fun loadFile(file: File): String? {
         if (!file.exists()) return null
         val scanner = Scanner(file)
         var result = ""
@@ -89,6 +89,7 @@ open class YamlConfig(private val dirPath: String) {
         val file = File(dirPath, path)
         return loadFile(file)
     }
+
     open fun <T> save(path: String?, obj: T) {
         val pair = buildNode(path)
         pair.first.set(obj)
