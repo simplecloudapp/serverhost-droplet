@@ -65,7 +65,7 @@ class ServerRunner(
     private fun updateServer(server: Server): CompletableFuture<Server?> {
         val address = InetSocketAddress(server.ip, server.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
-            val handle = PortProcessHandle.of(server.port.toInt()).orElse(null) ?: return@thenApply server
+            val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let { getHighestProcessParent(it) } ?: return@thenApply server
             serverToProcessHandle[server] = handle
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
@@ -170,7 +170,7 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
-        val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
+        val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let { getHighestProcessParent(it) }
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
@@ -181,6 +181,18 @@ class ServerRunner(
         serverToProcessHandle[server] = handle
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully reattached on PID ${handle.pid()}")
         return true
+    }
+
+    private val selfProcess = ProcessHandle.current()
+    /**
+     * This method is intended solve a bug where servers can not stop correctly.
+     * This works by searching for the highest parent process of a [ProcessHandle]
+     * which is either a standalone process or a direct child of the serverhost-droplets process.
+     */
+    private fun getHighestProcessParent(handle: ProcessHandle) : ProcessHandle {
+        val parent = handle.parent().orElse(null) ?: handle
+        if(selfProcess == parent) return handle
+        return getHighestProcessParent(parent)
     }
 
     private fun checkAcceptance(runtimeConfig: GroupRuntime?): Boolean {
