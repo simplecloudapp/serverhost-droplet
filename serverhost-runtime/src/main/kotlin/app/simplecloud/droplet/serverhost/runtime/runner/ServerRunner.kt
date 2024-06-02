@@ -7,6 +7,7 @@ import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.hack.OS
 import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
+import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
@@ -21,6 +22,8 @@ import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Path
+import java.util.*
 import java.util.concurrent.CompletableFuture
 
 class ServerRunner(
@@ -62,10 +65,14 @@ class ServerRunner(
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
-    private fun updateServer(server: Server): CompletableFuture<Server?> {
+    private fun updateServer(server: Server?): CompletableFuture<Server?> {
+        if (server == null) {
+            return CompletableFuture.completedFuture(null)
+        }
         val address = InetSocketAddress(server.ip, server.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
-            val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let { getHighestProcessParent(it) } ?: return@thenApply server
+            val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
+                ?.let { getRealProcessParent(server, it).orElse(null) } ?: return@thenApply server
             serverToProcessHandle[server] = handle
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
@@ -104,6 +111,10 @@ class ServerRunner(
         }
 
         return File(basicUrl)
+    }
+
+    private fun isServerDir(server: Server, path: Path): Boolean {
+        return path == getServerDir(server).toPath()
     }
 
     fun startServer(server: Server): Boolean {
@@ -170,7 +181,8 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
-        val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let { getHighestProcessParent(it) }
+        val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
+            ?.let { getRealProcessParent(server, it).orElse(null) }
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
@@ -183,16 +195,18 @@ class ServerRunner(
         return true
     }
 
-    private val selfProcess = ProcessHandle.current()
     /**
      * This method is intended solve a bug where servers can not stop correctly.
      * This works by searching for the highest parent process of a [ProcessHandle]
-     * which is either a standalone process or a direct child of the serverhost-droplets process.
+     * which is a process that has a server dir as execution environment.
      */
-    private fun getHighestProcessParent(handle: ProcessHandle) : ProcessHandle {
-        val parent = handle.parent().orElse(null) ?: handle
-        if(selfProcess == parent) return handle
-        return getHighestProcessParent(parent)
+    private fun getRealProcessParent(registeredServer: Server, handle: ProcessHandle): Optional<ProcessHandle> {
+        val path = ProcessDirectory.of(handle).orElse(getServerDir(registeredServer).toPath())
+        if (isServerDir(registeredServer, path)) {
+            logger.info("Found process handle with PID ${handle.pid()} for ${registeredServer.group}-${registeredServer.numericalId}")
+            return Optional.of(handle)
+        }
+        return handle.parent().orElse(null)?.let { getRealProcessParent(registeredServer, it) } ?: Optional.empty()
     }
 
     private fun checkAcceptance(runtimeConfig: GroupRuntime?): Boolean {
