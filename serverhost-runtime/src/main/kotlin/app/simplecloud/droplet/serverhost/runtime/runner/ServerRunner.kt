@@ -72,8 +72,13 @@ class ServerRunner(
         val address = InetSocketAddress(server.ip, server.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
             val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
-                ?.let { getRealProcessParent(server, it).orElse(null) } ?: return@thenApply server
-            serverToProcessHandle[server] = handle
+                ?.let {
+                    getRealProcessParent(server, it).orElse(null)
+                } ?: return@thenApply server
+            if (serverToProcessHandle[server] != handle) {
+                logger.info("Found updated process handle with PID ${handle.pid()} for ${server.group}-${server.numericalId}")
+                serverToProcessHandle[server] = handle
+            }
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.state =
@@ -203,7 +208,6 @@ class ServerRunner(
     private fun getRealProcessParent(registeredServer: Server, handle: ProcessHandle): Optional<ProcessHandle> {
         val path = ProcessDirectory.of(handle).orElse(getServerDir(registeredServer).toPath())
         if (isServerDir(registeredServer, path)) {
-            logger.info("Found process handle with PID ${handle.pid()} for ${registeredServer.group}-${registeredServer.numericalId}")
             return Optional.of(handle)
         }
         return handle.parent().orElse(null)?.let { getRealProcessParent(registeredServer, it) } ?: Optional.empty()
