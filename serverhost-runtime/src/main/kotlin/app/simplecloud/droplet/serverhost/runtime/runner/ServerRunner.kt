@@ -69,16 +69,21 @@ class ServerRunner(
         if (server == null) {
             return CompletableFuture.completedFuture(null)
         }
+
+        // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
+        // server to respond to pings though)
+        val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
+            val realProcess = getRealProcessParent(server, it).orElse(null)
+            if(serverToProcessHandle[server] != realProcess) {
+                logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
+                serverToProcessHandle[server] = realProcess
+            }
+            return@let realProcess
+        }
+
         val address = InetSocketAddress(server.ip, server.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
-            val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
-                ?.let {
-                    getRealProcessParent(server, it).orElse(null)
-                } ?: return@thenApply server
-            if (serverToProcessHandle[server] != handle) {
-                logger.info("Found updated process handle with PID ${handle.pid()} for ${server.group}-${server.numericalId}")
-                serverToProcessHandle[server] = handle
-            }
+            if(handle == null) return@thenApply null
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.state =
@@ -296,7 +301,8 @@ class ServerRunner(
                     updateServer(it).thenApply { then ->
                         if (then == null) delete = true
                         else server = then
-                    }.exceptionally {
+                    }.exceptionally { error ->
+                        logger.error("An error occurred whilst updating the server:", error)
                         delete = true
                     }.get()
 
