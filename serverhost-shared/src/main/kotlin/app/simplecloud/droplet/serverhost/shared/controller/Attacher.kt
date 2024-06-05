@@ -1,9 +1,9 @@
-package app.simplecloud.droplet.serverhost.runtime.controller
+package app.simplecloud.droplet.serverhost.shared.controller
 
 import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.future.toCompletable
 import app.simplecloud.controller.shared.host.ServerHost
-import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
+import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import io.grpc.ConnectivityState
 import kotlinx.coroutines.*
@@ -12,10 +12,12 @@ import java.util.concurrent.CompletableFuture
 
 class Attacher(
     authCallCredentials: AuthCallCredentials,
-    private val serverHost: ServerHost
+    private val serverHost: ServerHost,
+    host: String = "0.0.0.0",
+    port: Int = 5816,
 ) {
 
-    private val channel = ServerHostRuntime.createControllerChannel()
+    private val channel = ServerHostGrpc.createControllerChannel(host, port)
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
         .withCallCredentials(authCallCredentials)
     private val logger = LogManager.getLogger(Attacher::class.java)

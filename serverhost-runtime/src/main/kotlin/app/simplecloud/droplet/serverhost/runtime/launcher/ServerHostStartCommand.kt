@@ -8,9 +8,15 @@ import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
+import java.net.InetAddress
 import java.nio.file.Path
 
 class ServerHostStartCommand : CliktCommand() {
+
+    val hostId: String by option(help = "ServerHost ID", envvar = "HOST_ID").default("internal-server-host")
+    val hostIp: String by option(help = "ServerHost IP (default: local host address)", envvar = "HOST_IP").default(
+        InetAddress.getLocalHost().hostAddress)
+    val hostPort: Int by option(help = "ServerHost port (default: 5820)", envvar = "HOST_PORT").int().default(5820)
 
     val templatePath: Path by option(help = "Path to the template files (templates)", envvar = "TEMPLATES_PATH")
         .path()

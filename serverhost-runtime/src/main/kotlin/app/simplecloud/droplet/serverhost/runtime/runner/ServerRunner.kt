@@ -13,6 +13,7 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
+import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import build.buf.gen.simplecloud.controller.v1.ServerState
 import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
@@ -42,7 +43,7 @@ class ServerRunner(
     private val screenOptions =
         mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
-    private val channel = ServerHostRuntime.createControllerChannel()
+    private val channel = ServerHostGrpc.createControllerChannel(args.grpcHost, args.grpcPort)
     private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
         .withCallCredentials(authCallCredentials)
 
