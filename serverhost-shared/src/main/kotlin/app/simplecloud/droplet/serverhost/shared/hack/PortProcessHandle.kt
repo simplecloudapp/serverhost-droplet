@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.hack
+package app.simplecloud.droplet.serverhost.shared.hack
 
 import app.simplecloud.controller.shared.server.Server
 import build.buf.gen.simplecloud.controller.v1.ServerDefinition

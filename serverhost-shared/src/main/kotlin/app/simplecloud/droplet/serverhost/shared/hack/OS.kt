@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.hack
+package app.simplecloud.droplet.serverhost.shared.hack
 
 enum class OS(val names: List<String>) {
     WINDOWS(listOf("windows")),

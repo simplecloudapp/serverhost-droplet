@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     api(libs.simpleCloudController)
+    implementation(rootProject.libs.gson)
     implementation(rootProject.libs.bundles.log4j)
 }
 

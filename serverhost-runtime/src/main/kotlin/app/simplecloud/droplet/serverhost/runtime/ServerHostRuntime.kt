@@ -5,7 +5,7 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.resources.ResourceCopier
+import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher

@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.resources
+package app.simplecloud.droplet.serverhost.shared.resources
 
 import java.io.File
 import java.net.URI
@@ -19,7 +19,7 @@ class ResourceCopier {
         path.listDirectoryEntries().forEach {
             it.walk(PathWalkOption.BREADTH_FIRST).forEach { child ->
                 val relative = File(child.relativeTo(path).pathString).toPath()
-                if (!relative.parent.exists())
+                if (relative.parent == null || !relative.parent.exists())
                     Files.createDirectories(relative)
                 Files.copy(child, relative, StandardCopyOption.REPLACE_EXISTING)
             }
