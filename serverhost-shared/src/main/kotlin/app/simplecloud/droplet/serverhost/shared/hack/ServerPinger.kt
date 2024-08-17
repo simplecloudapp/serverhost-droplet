@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.hack
+package app.simplecloud.droplet.serverhost.shared.hack
 
 import com.google.gson.*
 import java.io.*

@@ -5,15 +5,15 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
-import app.simplecloud.droplet.serverhost.runtime.hack.OS
-import app.simplecloud.droplet.serverhost.runtime.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
-import app.simplecloud.droplet.serverhost.runtime.hack.ServerPinger
+import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
+import app.simplecloud.droplet.serverhost.shared.hack.OS
+import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import build.buf.gen.simplecloud.controller.v1.ServerState
 import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
@@ -26,6 +26,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import kotlin.math.log
 
 class ServerRunner(
     private val configurator: ServerConfiguratorExecutor,
@@ -75,11 +76,11 @@ class ServerRunner(
         // server to respond to pings though)
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
             val realProcess = getRealProcessParent(server, it).orElse(null)
-            if(serverToProcessHandle[server] != realProcess) {
+            if(realProcess != null && serverToProcessHandle[server] != realProcess) {
                 logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
                 serverToProcessHandle[server] = realProcess
             }
-            return@let realProcess
+            return@let serverToProcessHandle[server]
         }
 
         val address = InetSocketAddress(server.ip, server.port.toInt())
@@ -272,26 +273,6 @@ class ServerRunner(
         )
     }
 
-    private fun Server.toEnv(): MutableMap<String, String> {
-        val map = mutableMapOf<String, String>()
-        map["SIMPLECLOUD_GROUP"] = this.group
-        map["SIMPLECLOUD_HOST"] = this.host ?: "unknown"
-        map["SIMPLECLOUD_IP"] = this.ip
-        map["SIMPLECLOUD_PORT"] = this.port.toString()
-        map["SIMPLECLOUD_UNIQUE_ID"] = this.uniqueId
-        map["SIMPLECLOUD_CREATED_AT"] = this.createdAt.toString()
-        map["SIMPLECLOUD_MAX_PLAYERS"] = this.maxPlayers.toString()
-        map["SIMPLECLOUD_NUMERICAL_ID"] = this.numericalId.toString()
-        map["SIMPLECLOUD_TYPE"] = this.type.toString()
-        map["SIMPLECLOUD_MAX_MEMORY"] = this.maxMemory.toString()
-        map["SIMPLECLOUD_MIN_MEMORY"] = this.minMemory.toString()
-        map.putAll(this.properties.map {
-            "SIMPLECLOUD_${
-                it.key.uppercase().replace(" ", "_").replace("-", "_")
-            }" to it.value
-        })
-        return map
-    }
 
     fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.Default).launch {
