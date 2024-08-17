@@ -4,6 +4,7 @@ kotlinCoroutines = "1.4.2"
 shadow = "8.1.1"
 log4j = "2.20.0"
 simpleCloudController = "0.0.27-EXPERIMENTAL"
+simpleCloudPubSub = "1.0.3"
 commonsIo = "2.15.1"
 configurate = "4.1.2"
 clikt = "4.3.0"
@@ -19,6 +20,7 @@ log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j
 log4jSlf4j = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j" }
 
 simpleCloudController = { module = "app.simplecloud.controller:controller-shared", version.ref = "simpleCloudController" }
+simpleCloudPubSub = { module = "app.simplecloud:simplecloud-pubsub", version.ref = "simpleCloudPubSub" }
 
 commonsIo = { module = "commons-io:commons-io", version.ref = "commonsIo" }
 
