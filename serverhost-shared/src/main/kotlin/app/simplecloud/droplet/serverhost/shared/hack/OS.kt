@@ -7,7 +7,7 @@ enum class OS(val names: List<String>) {
     companion object {
         fun get(): OS? {
             val name = System.getProperty("os.name").lowercase()
-            OS.values().forEach {
+            entries.forEach {
                 if (it.names.any { osName -> name.contains(osName) }) {
                     return it
                 }

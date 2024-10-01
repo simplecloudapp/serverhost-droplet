@@ -4,6 +4,7 @@ import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.future.toCompletable
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
+import build.buf.gen.simplecloud.controller.v1.AttachServerHostRequest
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import io.grpc.ConnectivityState
 import kotlinx.coroutines.*
@@ -23,7 +24,9 @@ class Attacher(
     private val logger = LogManager.getLogger(Attacher::class.java)
 
     private fun attach(): CompletableFuture<Boolean> {
-        return stub.attachServerHost(serverHost.toDefinition()).toCompletable().thenApply {
+        return stub.attachServerHost(
+            AttachServerHostRequest.newBuilder().setServerHost(serverHost.toDefinition()).build()
+        ).toCompletable().thenApply {
             logger.info("Successfully attached to Controller.")
             return@thenApply true
         }.exceptionally { return@exceptionally false }

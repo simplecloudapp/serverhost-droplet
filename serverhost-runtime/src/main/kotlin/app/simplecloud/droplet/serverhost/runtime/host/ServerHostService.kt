@@ -13,14 +13,14 @@ class ServerHostService(
     private val serverHost: ServerHost,
     private val runner: ServerRunner,
 ) : ServerHostServiceGrpc.ServerHostServiceImplBase() {
-    override fun startServer(request: StartServerRequest, responseObserver: StreamObserver<ServerDefinition>) {
+    override fun startServer(request: ServerHostStartServerRequest, responseObserver: StreamObserver<ServerDefinition>) {
         val group = Group.fromDefinition(request.group)
         val port = PortProcessHandle.findNextFreePort(group.startPort.toInt(), request.server)
         val server = Server.fromDefinition(request.server.copy {
-            this.state = ServerState.STARTING
-            this.port = port.toLong()
+            this.serverState = ServerState.STARTING
+            this.serverPort = port.toLong()
             this.hostId = serverHost.id
-            this.ip = serverHost.host
+            this.serverIp = serverHost.host
         })
 
         try {

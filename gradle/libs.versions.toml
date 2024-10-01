@@ -1,9 +1,9 @@
 [versions]
-kotlin = "1.8.0"
+kotlin = "2.0.20"
 kotlinCoroutines = "1.4.2"
 shadow = "8.1.1"
 log4j = "2.20.0"
-simpleCloudController = "0.0.27-EXPERIMENTAL"
+simpleCloudController = "0.0.28-EXPERIMENTAL"
 simpleCloudPubSub = "1.0.3"
 commonsIo = "2.15.1"
 configurate = "4.1.2"

@@ -9,7 +9,7 @@ plugins {
 allprojects {
 
     group = "app.simplecloud.droplet"
-    version = "0.0.1-EXPERIMENTAL"
+    version = "0.0.2-EXPERIMENTAL"
 
     repositories {
         mavenCentral()
@@ -28,11 +28,10 @@ subprojects {
     }
 
     kotlin {
-        jvmToolchain(17)
-    }
-
-    tasks.withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "17"
+        jvmToolchain(22)
+        compilerOptions {
+            apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        }
     }
 
     tasks.named("shadowJar", ShadowJar::class) {

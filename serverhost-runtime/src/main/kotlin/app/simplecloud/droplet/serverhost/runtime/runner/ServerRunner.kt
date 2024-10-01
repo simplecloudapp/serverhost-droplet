@@ -6,7 +6,6 @@ import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
-import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
@@ -14,9 +13,10 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
+import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
 import build.buf.gen.simplecloud.controller.v1.ServerState
-import build.buf.gen.simplecloud.controller.v1.ServerUpdateRequest
+import build.buf.gen.simplecloud.controller.v1.UpdateServerRequest
 import build.buf.gen.simplecloud.controller.v1.copy
 import kotlinx.coroutines.*
 import org.apache.commons.io.FileUtils
@@ -26,7 +26,6 @@ import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import kotlin.math.log
 
 class ServerRunner(
     private val configurator: ServerConfiguratorExecutor,
@@ -88,7 +87,7 @@ class ServerRunner(
             if(handle == null) return@thenApply null
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
-                this.state =
+                this.serverState =
                     if (response.description.text == "INGAME")
                         ServerState.INGAME
                     else if (server.state == ServerState.STARTING)
@@ -97,7 +96,7 @@ class ServerRunner(
                         server.state
                 this.maxPlayers = response.players.max.toLong()
                 this.playerCount = response.players.online.toLong()
-                this.properties["motd"] = response.description.text
+                this.cloudProperties["motd"] = response.description.text
             })
             return@thenApply copiedServer
         }.exceptionally { _ ->
@@ -289,7 +288,7 @@ class ServerRunner(
                     }.get()
 
                     stub.updateServer(
-                        ServerUpdateRequest.newBuilder()
+                        UpdateServerRequest.newBuilder()
                             .setServer(server.toDefinition())
                             .setDeleted(delete).build()
                     )
