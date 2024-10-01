@@ -66,6 +66,13 @@ class ServerRunner(
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
+    private fun updateServerCache(uniqueId: String, updated: Server) {
+        val key = serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
+        val value = serverToProcessHandle[key]!!
+        serverToProcessHandle.remove(key)
+        serverToProcessHandle[updated] = value
+    }
+
     private fun updateServer(server: Server?): CompletableFuture<Server?> {
         if (server == null) {
             return CompletableFuture.completedFuture(null)
@@ -281,7 +288,10 @@ class ServerRunner(
                     var server = it
                     updateServer(it).thenApply { then ->
                         if (then == null) delete = true
-                        else server = then
+                        else {
+                            server = then
+                            updateServerCache(then.uniqueId, then)
+                        }
                     }.exceptionally { error ->
                         logger.error("An error occurred whilst updating the server:", error)
                         delete = true
