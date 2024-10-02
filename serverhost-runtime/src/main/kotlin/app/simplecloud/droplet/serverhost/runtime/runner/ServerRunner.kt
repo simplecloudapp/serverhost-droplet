@@ -267,6 +267,8 @@ class ServerRunner(
         builder.environment()["CONTROLLER_HOST"] = this.args.grpcHost
         builder.environment()["CONTROLLER_PORT"] = this.args.grpcPort.toString()
         builder.environment()["CONTROLLER_SECRET"] = this.args.authSecret
+        builder.environment()["PUBSUB_HOST"] = this.args.pubSubGrpcHost
+        builder.environment()["PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
         return builder
     }
