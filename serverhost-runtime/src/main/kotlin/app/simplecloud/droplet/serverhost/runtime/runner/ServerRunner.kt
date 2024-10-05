@@ -5,6 +5,7 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
+import app.simplecloud.droplet.serverhost.runtime.hack.JarMainClass
 import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
@@ -26,6 +27,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.CompletableFuture
+import kotlin.io.path.absolutePathString
 
 class ServerRunner(
     private val configurator: ServerConfiguratorExecutor,
@@ -36,7 +38,7 @@ class ServerRunner(
 ) {
 
     private val defaultOptions =
-        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-jar")
+        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-cp", "${Path.of("libs").absolutePathString()}${File.separator}*${File.pathSeparator}%SERVER_FILE%", "%MAIN_CLASS%")
     private val defaultArguments = listOf("nogui")
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
@@ -82,7 +84,7 @@ class ServerRunner(
         // server to respond to pings though)
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
             val realProcess = getRealProcessParent(server, it).orElse(null)
-            if(realProcess != null && serverToProcessHandle[server] != realProcess) {
+            if (realProcess != null && serverToProcessHandle[server] != realProcess) {
                 logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
                 serverToProcessHandle[server] = realProcess
             }
@@ -91,7 +93,7 @@ class ServerRunner(
 
         val address = InetSocketAddress(server.ip, server.port.toInt())
         return ServerPinger.ping(address).thenApply { response ->
-            if(handle == null) return@thenApply null
+            if (handle == null) return@thenApply null
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.serverState =
@@ -237,6 +239,7 @@ class ServerRunner(
         GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
         val command = mutableListOf<String>()
         command.add(jvmArgs.executable ?: defaultExecutable)
+        val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
@@ -244,6 +247,8 @@ class ServerRunner(
             "%NUMERICAL_ID%" to server.numericalId.toString(),
             "%GROUP%" to server.group,
             "%UNIQUE_ID%" to server.uniqueId,
+            "%MAIN_CLASS%" to JarMainClass.find(serverJar),
+            "%SERVER_FILE%" to serverJar.absolutePathString(),
         )
         placeholders.putAll(server.properties.map {
             "%${it.key.uppercase().replace("-", "_")}%" to it.value
@@ -252,13 +257,9 @@ class ServerRunner(
         if (!jvmArgs.options.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.options, placeholders)
         }
-
-        command.add(ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).absolutePath)
-
         if (!jvmArgs.arguments.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
         }
-
         val builder = ProcessBuilder()
             .command(command)
             .directory(getServerDir(server, runtimeConfig))
