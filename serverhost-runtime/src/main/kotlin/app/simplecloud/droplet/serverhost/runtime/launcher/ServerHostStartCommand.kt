@@ -18,6 +18,10 @@ class ServerHostStartCommand : CliktCommand() {
         InetAddress.getLocalHost().hostAddress)
     val hostPort: Int by option(help = "ServerHost port (default: 5820)", envvar = "HOST_PORT").int().default(5820)
 
+    val libsPath: Path by option(help = "Path to the library jars (libs)", envvar = "LIBS_PATH")
+        .path()
+        .default(Path.of("libs"))
+
     val templatePath: Path by option(help = "Path to the template files (templates)", envvar = "TEMPLATES_PATH")
         .path()
         .default(Path.of("templates"))

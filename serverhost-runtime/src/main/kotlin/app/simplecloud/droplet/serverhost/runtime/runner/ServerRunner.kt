@@ -38,7 +38,7 @@ class ServerRunner(
 ) {
 
     private val defaultOptions =
-        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-cp", "${Path.of("libs").absolutePathString()}${File.separator}*${File.pathSeparator}%SERVER_FILE%", "%MAIN_CLASS%")
+        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-cp", "${args.libsPath.absolutePathString()}${File.separator}*${File.pathSeparator}%SERVER_FILE%", "%MAIN_CLASS%")
     private val defaultArguments = listOf("nogui")
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
