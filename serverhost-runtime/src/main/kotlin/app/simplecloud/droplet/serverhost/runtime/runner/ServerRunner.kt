@@ -15,10 +15,7 @@ import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
-import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpc
-import build.buf.gen.simplecloud.controller.v1.ServerState
-import build.buf.gen.simplecloud.controller.v1.UpdateServerRequest
-import build.buf.gen.simplecloud.controller.v1.copy
+import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.*
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
@@ -26,7 +23,6 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.util.*
-import java.util.concurrent.CompletableFuture
 import kotlin.io.path.absolutePathString
 
 class ServerRunner(
@@ -38,7 +34,14 @@ class ServerRunner(
 ) {
 
     private val defaultOptions =
-        listOf("-Xms%MIN_MEMORY%M", "-Xmx%MAX_MEMORY%M", "-Dcom.mojang.eula.agree=true", "-cp", "${args.libsPath.absolutePathString()}${File.separator}*${File.pathSeparator}%SERVER_FILE%", "%MAIN_CLASS%")
+        listOf(
+            "-Xms%MIN_MEMORY%M",
+            "-Xmx%MAX_MEMORY%M",
+            "-Dcom.mojang.eula.agree=true",
+            "-cp",
+            "${args.libsPath.absolutePathString()}${File.separator}*${File.pathSeparator}%SERVER_FILE%",
+            "%MAIN_CLASS%"
+        )
     private val defaultArguments = listOf("nogui")
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
@@ -46,7 +49,7 @@ class ServerRunner(
         mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
     private val channel = ServerHostGrpc.createControllerChannel(args.grpcHost, args.grpcPort)
-    private val stub = ControllerServerServiceGrpc.newFutureStub(channel)
+    private val stub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(channel)
         .withCallCredentials(authCallCredentials)
 
     private val stopTries = mutableMapOf<String, Int>()
@@ -75,9 +78,9 @@ class ServerRunner(
         serverToProcessHandle[updated] = value
     }
 
-    private fun updateServer(server: Server?): CompletableFuture<Server?> {
+    private suspend fun updateServer(server: Server?): Server? {
         if (server == null) {
-            return CompletableFuture.completedFuture(null)
+            return null
         }
 
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
@@ -92,30 +95,30 @@ class ServerRunner(
         }
 
         val address = InetSocketAddress(server.ip, server.port.toInt())
-        return ServerPinger.ping(address).thenApply { response ->
-            if (handle == null) return@thenApply null
+        try {
+            val ping = ServerPinger.ping(address)
+            if (handle == null) return null
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.serverState =
-                    if (response.description.text == "INGAME")
+                    if (ping.description.text == "INGAME")
                         ServerState.INGAME
                     else if (server.state == ServerState.STARTING)
                         ServerState.AVAILABLE
                     else
                         server.state
-                this.maxPlayers = response.players.max.toLong()
-                this.playerCount = response.players.online.toLong()
-                this.cloudProperties["motd"] = response.description.text
+                this.maxPlayers = ping.players.max.toLong()
+                this.playerCount = ping.players.online.toLong()
+                this.cloudProperties["motd"] = ping.description.text
             })
-            return@thenApply copiedServer
-        }.exceptionally { _ ->
+            return copiedServer
+        } catch (e: Exception) {
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
             if (!portBound) {
                 stopServer(server)
-                return@exceptionally null
+                return null
             }
-
-            return@exceptionally server
+            return server
         }
     }
 
@@ -169,30 +172,31 @@ class ServerRunner(
         return true
     }
 
-    fun stopServer(server: Server): CompletableFuture<Boolean> {
+    suspend fun stopServer(server: Server): Boolean {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
-        return stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries).thenApply {
-            if (!it) return@thenApply false
-            templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
-            FileUtils.deleteDirectory(getServerDir(server))
-            logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
-            PortProcessHandle.removePreBind(server.port.toInt())
-            return@thenApply true
-        }
+        val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
+        if (!stopped) return false
+        templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
+        FileUtils.deleteDirectory(getServerDir(server))
+        logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
+        PortProcessHandle.removePreBind(server.port.toInt())
+        return true
     }
 
-    private fun stopServer(uniqueId: String, forcibly: Boolean = false): CompletableFuture<Boolean> {
-        val server = getServer(uniqueId) ?: return CompletableFuture.completedFuture(false)
-        val process = serverToProcessHandle[server] ?: return CompletableFuture.completedFuture(false)
+    private suspend fun stopServer(uniqueId: String, forcibly: Boolean = false): Boolean {
+        val server = getServer(uniqueId) ?: return false
+        val process = serverToProcessHandle[server] ?: return false
         if (!forcibly)
             process.destroy()
         else
             process.destroyForcibly()
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
-        return process.onExit().thenApply {
-            serverToProcessHandle.remove(server)
-            stopTries.remove(uniqueId)
-            return@thenApply true
+        return withContext(Dispatchers.IO) {
+            process.onExit().thenApply {
+                serverToProcessHandle.remove(server)
+                stopTries.remove(uniqueId)
+                return@thenApply true
+            }.get()
         }
     }
 
@@ -289,17 +293,16 @@ class ServerRunner(
                 serverToProcessHandle.keys.toList().forEach {
                     var delete = false
                     var server = it
-                    updateServer(it).thenApply { then ->
-                        if (then == null) delete = true
+                    try {
+                        val updated = updateServer(it)
+                        if(updated == null) delete = true
                         else {
-                            server = then
-                            updateServerCache(then.uniqueId, then)
+                            server = updated
+                            updateServerCache(updated.uniqueId, updated)
                         }
-                    }.exceptionally { error ->
-                        logger.error("An error occurred whilst updating the server:", error)
-                        delete = true
-                    }.get()
-
+                    }catch (e: Exception) {
+                        logger.error("An error occurred whilst updating the server:", e)
+                    }
                     stub.updateServer(
                         UpdateServerRequest.newBuilder()
                             .setServer(server.toDefinition())

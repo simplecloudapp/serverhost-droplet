@@ -3,17 +3,17 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
-import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
+import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import build.buf.gen.simplecloud.controller.v1.*
 import io.grpc.Status
-import io.grpc.stub.StreamObserver
+import io.grpc.StatusException
 
 class ServerHostService(
     private val serverHost: ServerHost,
     private val runner: ServerRunner,
-) : ServerHostServiceGrpc.ServerHostServiceImplBase() {
-    override fun startServer(request: ServerHostStartServerRequest, responseObserver: StreamObserver<ServerDefinition>) {
+) : ServerHostServiceGrpcKt.ServerHostServiceCoroutineImplBase() {
+    override suspend fun startServer(request: ServerHostStartServerRequest): ServerDefinition {
         val group = Group.fromDefinition(request.group)
         val port = PortProcessHandle.findNextFreePort(group.startPort.toInt(), request.server)
         val server = Server.fromDefinition(request.server.copy {
@@ -22,51 +22,32 @@ class ServerHostService(
             this.hostId = serverHost.id
             this.serverIp = serverHost.host
         })
-
         try {
-            val startSuccess = runner.startServer(server)
-            if (!startSuccess) {
-                responseObserver.onError(ServerHostStartException(server, "Group not supported by this ServerHost."))
-                return
+            val started = runner.startServer(server)
+            if (!started) {
+                throw StatusException(Status.INVALID_ARGUMENT.withDescription("Group not supported by this ServerHost."))
             }
+            return server.toDefinition()
         } catch (e: Exception) {
-            responseObserver.onError(ServerHostStartException(server, "An internal error occurred."))
-            e.printStackTrace()
-            return
+            throw StatusException(Status.INTERNAL.withDescription("Failed to start server:").withCause(e))
         }
-        responseObserver.onNext(server.toDefinition())
-        responseObserver.onCompleted()
     }
 
-    override fun stopServer(request: ServerDefinition, responseObserver: StreamObserver<ServerDefinition>) {
-        runner.stopServer(Server.fromDefinition(request)).thenApply { success ->
-            if(!success) {
-                responseObserver.onError(
-                    Status.INTERNAL
-                        .withDescription("Could not stop server")
-                        .asRuntimeException()
-                )
-                return@thenApply
-            }
-            responseObserver.onNext(request)
-            responseObserver.onCompleted()
+    override suspend fun stopServer(request: ServerDefinition): ServerDefinition {
+        val stopped = runner.stopServer(Server.fromDefinition(request))
+        if(!stopped) {
+            throw StatusException(Status.INTERNAL.withDescription("Could not stop server"))
         }
-
+        return request
     }
 
-    override fun reattachServer(request: ServerDefinition, responseObserver: StreamObserver<ServerDefinition>) {
+    override suspend fun reattachServer(request: ServerDefinition): ServerDefinition {
         val server = Server.fromDefinition(request)
         val success = runner.reattachServer(server)
-        if(!success) {
-            responseObserver.onError(
-                Status.INTERNAL
-                    .withDescription("Could not reattach server")
-                    .asRuntimeException()
-            )
-            return
+        if (!success) {
+            throw StatusException(Status.INTERNAL.withDescription("Could not reattach server"))
         }
-        responseObserver.onNext(server.toDefinition())
-        responseObserver.onCompleted()
+        return server.toDefinition()
     }
 
 }

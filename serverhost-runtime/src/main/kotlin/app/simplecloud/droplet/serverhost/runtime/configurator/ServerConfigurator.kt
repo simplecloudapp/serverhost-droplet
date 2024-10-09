@@ -11,5 +11,6 @@ interface ServerConfigurator<T> {
 
 // This sadly has to exist due to kotlin not being able to infer the type on its own
 fun <T> ServerConfigurator<T>.save(data: Any, file: File) {
+    @Suppress("UNCHECKED_CAST")
     return this.save(data as T, file)
 }

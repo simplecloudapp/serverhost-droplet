@@ -1,6 +1,7 @@
 package app.simplecloud.droplet.serverhost.shared.hack
 
 import com.google.gson.*
+import kotlinx.coroutines.coroutineScope
 import java.io.*
 import java.lang.reflect.Type
 import java.net.InetSocketAddress
@@ -12,8 +13,8 @@ object ServerPinger {
         .registerTypeAdapter(Description::class.java, Description.Deserializer())
         .create()
 
-    fun ping(address: InetSocketAddress): CompletableFuture<StatusResponse> {
-        return CompletableFuture.supplyAsync {
+    suspend fun ping(address: InetSocketAddress): StatusResponse {
+        return coroutineScope {
             Socket().use { socket ->
                 socket.setSoTimeout(3000)
                 socket.connect(address, 3000)
@@ -41,7 +42,7 @@ object ServerPinger {
                                 dataOutputStream.writeByte(0x00) // packet id for ping
 
                                 val json = fetchJson(dataInputStream)
-                                return@supplyAsync parseJsonResponse(json)
+                                return@coroutineScope parseJsonResponse(json)
                             }
                         }
                     }

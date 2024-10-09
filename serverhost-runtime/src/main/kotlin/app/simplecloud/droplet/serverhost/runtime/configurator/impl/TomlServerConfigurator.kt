@@ -58,7 +58,9 @@ object TomlServerConfigurator : ServerConfigurator<MutableMap<String, Any>> {
             val asMapThis: MutableMap<String, Any>
             val asMapOther: MutableMap<String, Any>
             try {
+                @Suppress("UNCHECKED_CAST")
                 asMapThis = this[it] as MutableMap<String, Any>
+                @Suppress("UNCHECKED_CAST")
                 asMapOther = map[it] as MutableMap<String, Any>
             } catch (e: Exception) {
                 this[it] = map[it]!!
