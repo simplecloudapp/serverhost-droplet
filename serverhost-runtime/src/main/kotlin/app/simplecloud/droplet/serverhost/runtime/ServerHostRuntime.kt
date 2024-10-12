@@ -5,12 +5,12 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
-import app.simplecloud.pubsub.PubSubClient
+import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
 import org.apache.logging.log4j.LogManager
 import kotlin.concurrent.thread
@@ -26,21 +26,17 @@ class ServerHostRuntime(
         ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
     private val configurator = ServerConfiguratorExecutor()
     private val templateCopier = TemplateCopier(serverHostStartCommand)
+    private val controllerChannel = ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
+    private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel).withCallCredentials(authCallCredentials)
     private val runner = ServerRunner(
         configurator,
         templateCopier,
         serverHost,
         serverHostStartCommand,
-        authCallCredentials
+        controllerStub
     )
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()
-
-    private val pubSubClient = PubSubClient(
-        serverHostStartCommand.pubSubGrpcHost,
-        serverHostStartCommand.pubSubGrpcPort,
-        authCallCredentials,
-    )
 
     fun start() {
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
@@ -62,7 +58,7 @@ class ServerHostRuntime(
     private fun attach() {
         logger.info("Attaching to controller...")
         val attacher =
-            Attacher(authCallCredentials, serverHost, serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
+            Attacher(serverHost, controllerChannel, controllerStub)
         attacher.enforceAttach()
     }
 

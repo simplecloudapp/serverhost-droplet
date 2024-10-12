@@ -1,6 +1,5 @@
 package app.simplecloud.droplet.serverhost.runtime.runner
 
-import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
@@ -11,15 +10,21 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
-import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
-import build.buf.gen.simplecloud.controller.v1.*
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
+import build.buf.gen.simplecloud.controller.v1.ServerState
+import build.buf.gen.simplecloud.controller.v1.UpdateServerRequest
+import build.buf.gen.simplecloud.controller.v1.copy
 import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.util.*
@@ -30,8 +35,10 @@ class ServerRunner(
     private val templateCopier: TemplateCopier,
     private val serverHost: ServerHost,
     private val args: ServerHostStartCommand,
-    authCallCredentials: AuthCallCredentials,
+    private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
 ) {
+
+    val stopServerMutex = Mutex()
 
     private val defaultOptions =
         listOf(
@@ -47,10 +54,6 @@ class ServerRunner(
     private val screenExecutable: String = "screen"
     private val screenOptions =
         mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
-
-    private val channel = ServerHostGrpc.createControllerChannel(args.grpcHost, args.grpcPort)
-    private val stub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(channel)
-        .withCallCredentials(authCallCredentials)
 
     private val stopTries = mutableMapOf<String, Int>()
     private val maxGracefulTries = 3
@@ -73,6 +76,10 @@ class ServerRunner(
 
     private fun updateServerCache(uniqueId: String, updated: Server) {
         val key = serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
+        if (key == null) {
+            logger.warn("Server ${updated.group}-${updated.numericalId} could not be updated in cache")
+            return
+        }
         val value = serverToProcessHandle[key]!!
         serverToProcessHandle.remove(key)
         serverToProcessHandle[updated] = value
@@ -152,7 +159,6 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group not supported by this ServerHost.")
             return false
         }
-
         val builder = buildProcess(server, runtimeConfig)
 
         if (!builder.directory().exists()) {
@@ -176,27 +182,42 @@ class ServerRunner(
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false
-        templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
-        FileUtils.deleteDirectory(getServerDir(server))
+        stopServerMutex.withLock {
+            templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
+        }
+        try {
+            FileUtils.deleteDirectory(getServerDir(server))
+        } catch (e: IOException) {
+            logger.warn("Could not delete all files: ${e.localizedMessage}")
+        }
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
         PortProcessHandle.removePreBind(server.port.toInt())
         return true
     }
 
     private suspend fun stopServer(uniqueId: String, forcibly: Boolean = false): Boolean {
-        val server = getServer(uniqueId) ?: return false
-        val process = serverToProcessHandle[server] ?: return false
+        val server = getServer(uniqueId)
+        if (server == null) {
+            logger.error("Could not find server $uniqueId")
+            return false
+        }
+        val process = serverToProcessHandle[server]
+        if (process == null) {
+            logger.error("Could not find server process of server ${server.group}-${server.numericalId}")
+            return false
+        }
         if (!forcibly)
             process.destroy()
         else
             process.destroyForcibly()
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
-        return withContext(Dispatchers.IO) {
-            process.onExit().thenApply {
-                serverToProcessHandle.remove(server)
-                stopTries.remove(uniqueId)
-                return@thenApply true
-            }.get()
+        try {
+            process.onExit().await()
+            serverToProcessHandle.remove(server)
+            stopTries.remove(uniqueId)
+            return true
+        } catch (e: Exception) {
+            return false
         }
     }
 
@@ -229,7 +250,13 @@ class ServerRunner(
         if (isServerDir(registeredServer, path)) {
             return Optional.of(handle)
         }
-        return handle.parent().orElse(null)?.let { getRealProcessParent(registeredServer, it) } ?: Optional.empty()
+        val parent = handle.parent().orElse(null)
+        if (parent == null || parent.info().command().orElse(null)
+                ?.startsWith(registeredServer.properties.getOrDefault("executable", defaultExecutable)) == false
+        ) {
+            return Optional.empty()
+        }
+        return getRealProcessParent(registeredServer, parent)
     }
 
     private fun checkAcceptance(runtimeConfig: GroupRuntime?): Boolean {
@@ -295,15 +322,15 @@ class ServerRunner(
                     var server = it
                     try {
                         val updated = updateServer(it)
-                        if(updated == null) delete = true
+                        if (updated == null) delete = true
                         else {
                             server = updated
                             updateServerCache(updated.uniqueId, updated)
                         }
-                    }catch (e: Exception) {
+                    } catch (e: Exception) {
                         logger.error("An error occurred whilst updating the server:", e)
                     }
-                    stub.updateServer(
+                    controllerStub.updateServer(
                         UpdateServerRequest.newBuilder()
                             .setServer(server.toDefinition())
                             .setDeleted(delete).build()
