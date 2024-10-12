@@ -69,9 +69,9 @@ object PortProcessHandle {
         return !of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
     }
 
-    fun removePreBind(port: Int) {
+    fun removePreBind(port: Int, forced: Boolean = false) {
         // Check if max-startup-seconds is reached and return if not
-        if (LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MAX))) {
+        if (!forced && LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MAX))) {
             return
         }
 

@@ -194,7 +194,7 @@ class ServerRunner(
             logger.warn("Could not delete all files: ${e.localizedMessage}")
         }
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
-        PortProcessHandle.removePreBind(server.port.toInt())
+        PortProcessHandle.removePreBind(server.port.toInt(), true)
         return true
     }
 
@@ -235,7 +235,7 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
             FileUtils.deleteDirectory(getServerDir(server))
-            PortProcessHandle.removePreBind(server.port.toInt())
+            PortProcessHandle.removePreBind(server.port.toInt(), true)
             return false
         }
         serverToProcessHandle[server] = handle
