@@ -70,6 +70,11 @@ object PortProcessHandle {
     }
 
     fun removePreBind(port: Int) {
+        // Check if max-startup-seconds is reached and return if not
+        if (LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MAX))) {
+            return
+        }
+
         preBindPorts.remove(port)
     }
 

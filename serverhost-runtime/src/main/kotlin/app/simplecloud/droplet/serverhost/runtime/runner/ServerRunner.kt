@@ -105,6 +105,7 @@ class ServerRunner(
         try {
             val ping = ServerPinger.ping(address)
             if (handle == null) return null
+            logger.info("Pinged server ${server.group}-${server.numericalId} successfully")
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.serverState =
@@ -118,10 +119,12 @@ class ServerRunner(
                 this.playerCount = ping.players.online.toLong()
                 this.cloudProperties["motd"] = ping.description.text
             })
+            logger.info("Updated server ${server.group}-${server.numericalId} with new state ${copiedServer.state}")
             return copiedServer
         } catch (e: Exception) {
+            logger.info("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
-            if (!portBound) {
+            if (!portBound ) {
                 stopServer(server)
                 return null
             }
