@@ -3,19 +3,34 @@ package app.simplecloud.droplet.serverhost.runtime.launcher
 import app.simplecloud.controller.shared.secret.AuthFileSecretFactory
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
+import com.github.ajalt.clikt.sources.PropertiesValueSource
 import java.net.InetAddress
 import java.nio.file.Path
+import kotlin.io.path.exists
 
 class ServerHostStartCommand : CliktCommand() {
+    private val propertiesFile: Path by option(
+        help = "Path to the configuration file",
+        envvar = "PROPERTIES"
+    ).path(canBeDir = false).default(Path.of(".config", "server-host.properties"))
+
+    init {
+        context {
+            if(!propertiesFile.exists()) return@context
+            valueSource = PropertiesValueSource.from(propertiesFile)
+        }
+    }
 
     val hostId: String by option(help = "ServerHost ID", envvar = "HOST_ID").default("internal-server-host")
     val hostIp: String by option(help = "ServerHost IP (default: local host address)", envvar = "HOST_IP").default(
-        InetAddress.getLocalHost().hostAddress)
+        InetAddress.getLocalHost().hostAddress
+    )
     val hostPort: Int by option(help = "ServerHost port (default: 5820)", envvar = "HOST_PORT").int().default(5820)
 
     val libsPath: Path by option(help = "Path to the library jars (libs)", envvar = "LIBS_PATH")
@@ -32,8 +47,14 @@ class ServerHostStartCommand : CliktCommand() {
     val grpcHost: String by option(help = "Grpc host (default: localhost)", envvar = "GRPC_HOST").default("localhost")
     val grpcPort: Int by option(help = "Grpc port (default: 5816)", envvar = "GRPC_PORT").int().default(5816)
 
-    val pubSubGrpcHost: String by option(help = "PubSub Grpc host (default: localhost)", envvar = "CONTROLLER_PUBSUB_HOST").default("localhost")
-    val pubSubGrpcPort: Int by option(help = "PubSub Grpc port (default: 5817)", envvar = "CONTROLLER_PUBSUB_PORT").int().default(5817)
+    val pubSubGrpcHost: String by option(
+        help = "PubSub Grpc host (default: localhost)",
+        envvar = "CONTROLLER_PUBSUB_HOST"
+    ).default("localhost")
+    val pubSubGrpcPort: Int by option(
+        help = "PubSub Grpc port (default: 5817)",
+        envvar = "CONTROLLER_PUBSUB_PORT"
+    ).int().default(5817)
 
     private val authSecretPath: Path by option(
         help = "Path to auth secret file (default: .auth.secret)",
