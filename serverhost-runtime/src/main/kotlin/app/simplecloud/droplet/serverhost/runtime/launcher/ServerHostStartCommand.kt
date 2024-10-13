@@ -10,20 +10,15 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import com.github.ajalt.clikt.sources.PropertiesValueSource
+import java.io.File
 import java.net.InetAddress
 import java.nio.file.Path
 import kotlin.io.path.exists
 
 class ServerHostStartCommand : CliktCommand() {
-    private val propertiesFile: Path by option(
-        help = "Path to the configuration file",
-        envvar = "PROPERTIES"
-    ).path(canBeDir = false).default(Path.of(".config", "server-host.properties"))
-
     init {
         context {
-            if(!propertiesFile.exists()) return@context
-            valueSource = PropertiesValueSource.from(propertiesFile)
+            valueSource = PropertiesValueSource.from(File("server-host.properties"))
         }
     }
 
