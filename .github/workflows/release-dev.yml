@@ -30,6 +30,9 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+        
       - name: Build ShadowJars
         run: ./gradlew clean build shadowJar
 
