@@ -9,7 +9,7 @@ plugins {
 allprojects {
 
     group = "app.simplecloud.droplet"
-    version = "0.0.2-EXPERIMENTAL"
+    version = "0.0.2"
 
     repositories {
         mavenCentral()
