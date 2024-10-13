@@ -1,6 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.net.URI
 
 plugins {
     alias(libs.plugins.kotlin)
@@ -10,10 +9,12 @@ plugins {
 allprojects {
 
     group = "app.simplecloud.droplet"
-    version = "1.0-SNAPSHOT"
+    version = "0.0.2-EXPERIMENTAL"
 
     repositories {
         mavenCentral()
+        mavenLocal()
+        maven("https://buf.build/gen/maven")
     }
 }
 
@@ -27,11 +28,10 @@ subprojects {
     }
 
     kotlin {
-        jvmToolchain(17)
-    }
-
-    tasks.withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = "17"
+        jvmToolchain(21)
+        compilerOptions {
+            apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        }
     }
 
     tasks.named("shadowJar", ShadowJar::class) {

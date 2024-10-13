@@ -1,25 +1,50 @@
 [versions]
-kotlin = "1.8.0"
+kotlin = "2.0.20"
+kotlinCoroutines = "1.9.0"
 shadow = "8.1.1"
 log4j = "2.20.0"
-grpcVersion = "1.61.0"
-grpcKotlinVersion = "1.4.1"
+simpleCloudController = "0.0.28-EXPERIMENTAL"
+simpleCloudPubSub = "1.0.4"
+commonsIo = "2.15.1"
+configurate = "4.1.2"
+clikt = "4.3.0"
+toml4j = "0.7.2"
+gson = "2.11.0"
 
 [libraries]
 kotlinJvm = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
 kotlinTest = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinCoroutines" }
+
+gson = { module = "com.google.code.gson:gson", version.ref = "gson"}
+
 log4jCore = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
 log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4jSlf4j = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j" }
-grpcStub = { module = "io.grpc:grpc-stub", version.ref = "grpcVersion" }
-grpcKotlinStub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpcKotlinVersion" }
-grpcNettyShaded = { module = "io.grpc:grpc-netty-shaded", version.ref = "grpcVersion" }
+
+simpleCloudController = { module = "app.simplecloud.controller:controller-api", version.ref = "simpleCloudController" }
+simpleCloudPubSub = { module = "app.simplecloud:simplecloud-pubsub", version.ref = "simpleCloudPubSub" }
+
+commonsIo = { module = "commons-io:commons-io", version.ref = "commonsIo" }
+
+configurateYaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
+configurateGson = { module = "org.spongepowered:configurate-gson", version.ref = "configurate" }
+configurateExtraKotlin = { module = "org.spongepowered:configurate-extra-kotlin", version.ref = "configurate" }
+
+toml4j = { module = "com.moandjiezana.toml:toml4j", version.ref = "toml4j"}
+
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 
 [bundles]
 log4j = [
     "log4jCore",
     "log4jApi",
     "log4jSlf4j"
+]
+configurate = [
+    "configurateYaml",
+    "configurateGson",
+    "configurateExtraKotlin"
 ]
 
 [plugins]

@@ -1,19 +1,50 @@
 package app.simplecloud.droplet.serverhost.runtime
 
+import app.simplecloud.controller.shared.auth.AuthCallCredentials
+import app.simplecloud.controller.shared.host.ServerHost
+import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
+import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
+import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
+import app.simplecloud.droplet.serverhost.shared.controller.Attacher
+import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
+import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
-import io.grpc.ServerBuilder
 import org.apache.logging.log4j.LogManager
 import kotlin.concurrent.thread
 
-class ServerHostRuntime {
+class ServerHostRuntime(
+    private val serverHostStartCommand: ServerHostStartCommand
+) {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
-    private val server = createGrpcServerFromEnv()
+    private val authCallCredentials = AuthCallCredentials(serverHostStartCommand.authSecret)
+
+    private val serverHost =
+        ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
+    private val configurator = ServerConfiguratorExecutor()
+    private val templateCopier = TemplateCopier(serverHostStartCommand)
+    private val controllerChannel = ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
+    private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel).withCallCredentials(authCallCredentials)
+    private val runner = ServerRunner(
+        configurator,
+        templateCopier,
+        serverHost,
+        serverHostStartCommand,
+        controllerStub
+    )
+    private val server = createGrpcServer()
+    private val resourceCopier = ResourceCopier()
 
     fun start() {
-        logger.info("Starting ServerHost...")
+        logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
+        attach()
+        resourceCopier.copyAll("copy")
+        runner.startServerStateChecker()
+        templateCopier.loadTemplates()
     }
 
     private fun startGrpcServer() {
@@ -24,11 +55,16 @@ class ServerHostRuntime {
         }
     }
 
-    private fun createGrpcServerFromEnv(): Server {
-        val port = System.getenv("GRPC_PORT")?.toInt() ?: 5816
-        return ServerBuilder.forPort(port)
-                .addService(ServerHostService())
-                .build()
+    private fun attach() {
+        logger.info("Attaching to controller...")
+        val attacher =
+            Attacher(serverHost, controllerChannel, controllerStub)
+        attacher.enforceAttach()
+    }
+
+    private fun createGrpcServer(): Server {
+        return ServerHostGrpc.createGrpcServerBuilder(serverHost, serverHostStartCommand.authSecret)
+            .addService(ServerHostService(serverHost, runner)).build()
     }
 
 }
