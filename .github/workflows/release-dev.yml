@@ -62,7 +62,7 @@ jobs:
         run: |
           for jar in $(find . -name "*.jar" -path "*/build/libs/*.jar"); do
             echo "Uploading $jar"
-            gh release upload ${{ steps.create_release.outputs.html_url }} "$jar"
+            gh release upload v${{ env.GRADLE_VERSION }}-dev.${{ env.COMMIT_HASH }} "$jar"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

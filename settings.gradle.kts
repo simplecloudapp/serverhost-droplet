@@ -14,4 +14,4 @@ plugins {
 
 rootProject.name = "serverhost-droplet"
 
-include("serverhost-api", "serverhost-runtime", "serverhost-shared")
+include("serverhost-runtime", "serverhost-shared")
