@@ -39,7 +39,6 @@ class ServerRunner(
 ) {
 
     private val copyTemplateMutex = Mutex()
-    private val stopServerMutex = Mutex()
 
     private val defaultOptions =
         listOf(
@@ -126,7 +125,7 @@ class ServerRunner(
             logger.info("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
             if (!portBound) {
-                stopServerMutex(server)
+                stopServer(server)
                 return null
             }
             return server
@@ -182,17 +181,7 @@ class ServerRunner(
         return true
     }
 
-    suspend fun stopServerMutex(server: Server): Boolean {
-        return stopServerMutex.withLock {
-            if (getServer(server.uniqueId) == null) {
-                logger.warn("Tried to stop already cleared server ${server.uniqueId}")
-                return false
-            }
-            return@withLock stopServer(server)
-        }
-    }
-
-    private suspend fun stopServer(server: Server): Boolean {
+    suspend fun stopServer(server: Server): Boolean {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false

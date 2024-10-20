@@ -34,7 +34,7 @@ class ServerHostService(
     }
 
     override suspend fun stopServer(request: ServerDefinition): ServerDefinition {
-        val stopped = runner.stopServerMutex(Server.fromDefinition(request))
+        val stopped = runner.stopServer(Server.fromDefinition(request))
         if(!stopped) {
             throw StatusException(Status.INTERNAL.withDescription("Could not stop server"))
         }
