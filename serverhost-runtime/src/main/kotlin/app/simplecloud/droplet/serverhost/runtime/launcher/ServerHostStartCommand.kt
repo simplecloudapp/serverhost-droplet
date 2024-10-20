@@ -13,7 +13,6 @@ import com.github.ajalt.clikt.sources.PropertiesValueSource
 import java.io.File
 import java.net.InetAddress
 import java.nio.file.Path
-import kotlin.io.path.exists
 
 class ServerHostStartCommand : CliktCommand() {
     init {
@@ -24,7 +23,11 @@ class ServerHostStartCommand : CliktCommand() {
 
     val hostId: String by option(help = "ServerHost ID", envvar = "HOST_ID").default("internal-server-host")
     val hostIp: String by option(help = "ServerHost IP (default: local host address)", envvar = "HOST_IP").default(
-        InetAddress.getLocalHost().hostAddress
+        try {
+            InetAddress.getLocalHost().hostAddress
+        } catch (e: Exception) {
+            "127.0.0.1"
+        }
     )
     val hostPort: Int by option(help = "ServerHost port (default: 5820)", envvar = "HOST_PORT").int().default(5820)
 

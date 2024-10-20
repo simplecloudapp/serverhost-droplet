@@ -38,7 +38,8 @@ class ServerRunner(
     private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
 ) {
 
-    val stopServerMutex = Mutex()
+    private val copyTemplateMutex = Mutex()
+    private val stopServerMutex = Mutex()
 
     private val defaultOptions =
         listOf(
@@ -124,8 +125,8 @@ class ServerRunner(
         } catch (e: Exception) {
             logger.info("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
-            if (!portBound ) {
-                stopServer(server)
+            if (!portBound) {
+                stopServerMutex(server)
                 return null
             }
             return server
@@ -181,11 +182,21 @@ class ServerRunner(
         return true
     }
 
-    suspend fun stopServer(server: Server): Boolean {
+    suspend fun stopServerMutex(server: Server): Boolean {
+        return stopServerMutex.withLock {
+            if (getServer(server.uniqueId) == null) {
+                logger.warn("Tried to stop already cleared server ${server.uniqueId}")
+                return false
+            }
+            return@withLock stopServer(server)
+        }
+    }
+
+    private suspend fun stopServer(server: Server): Boolean {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false
-        stopServerMutex.withLock {
+        copyTemplateMutex.withLock {
             templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
         }
         try {
@@ -330,14 +341,14 @@ class ServerRunner(
                             server = updated
                             updateServerCache(updated.uniqueId, updated)
                         }
+                        controllerStub.updateServer(
+                            UpdateServerRequest.newBuilder()
+                                .setServer(server.toDefinition())
+                                .setDeleted(delete).build()
+                        )
                     } catch (e: Exception) {
                         logger.error("An error occurred whilst updating the server:", e)
                     }
-                    controllerStub.updateServer(
-                        UpdateServerRequest.newBuilder()
-                            .setServer(server.toDefinition())
-                            .setDeleted(delete).build()
-                    )
                 }
                 delay(5000L)
             }
