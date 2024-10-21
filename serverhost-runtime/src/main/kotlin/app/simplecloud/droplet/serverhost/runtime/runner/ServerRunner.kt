@@ -169,7 +169,7 @@ class ServerRunner(
         }
         templateCopier.copy(server, this, TemplateActionType.DEFAULT)
         templateCopier.copy(server, this, TemplateActionType.RANDOM)
-        val configuratorSuccess = configurator.configurate(server, this)
+        val configuratorSuccess = configurator.configurate(server, this, args.forwardingSecret)
         if (!configuratorSuccess) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
             FileUtils.deleteDirectory(getServerDir(server))

@@ -6,11 +6,11 @@ import app.simplecloud.droplet.serverhost.runtime.config.YamlConfig
 import java.io.File
 
 class ServerConfiguratorExecutor {
-    fun configurate(server: Server, runner: ServerRunner): Boolean {
+    fun configurate(server: Server, runner: ServerRunner, forwardingSecret: String): Boolean {
         val configurator = server.properties["configurator"] ?: return false
         val configLoader = YamlConfig("options/configurators")
         val content = configLoader.loadFile("$configurator.yml") ?: return false
-        val mappedContent = ServerConfiguratorPlaceholderMapper.map(templatedString = content, server = server)
+        val mappedContent = ServerConfiguratorPlaceholderMapper.map(templatedString = content, server = server, forwardingSecret)
         val config = configLoader.loadYaml<ServerConfiguration>(mappedContent) ?: return false
         config.operations.forEach {
             val data = it.type.configurator.load(it.data) ?: return false
