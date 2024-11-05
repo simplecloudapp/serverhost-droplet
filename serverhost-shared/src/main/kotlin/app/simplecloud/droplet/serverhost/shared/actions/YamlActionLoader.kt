@@ -1,13 +1,11 @@
 package app.simplecloud.droplet.serverhost.shared.actions
 
-import app.simplecloud.droplet.serverhost.shared.actions.impl.CopyAction
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.nameWithoutExtension
-import kotlin.reflect.KClass
 
 class YamlActionLoader {
 
@@ -31,7 +29,7 @@ class YamlActionLoader {
         val node = YamlConfigurationLoader.builder()
             .path(file).build().load()
         for (key in node.childrenMap().keys) {
-            groups.add(YamlActionGroup(key.toString(), emptyList()))
+            groups.add(YamlActionGroup(key.toString(), emptyList(), emptyList(), emptyList()))
         }
         return groups
     }

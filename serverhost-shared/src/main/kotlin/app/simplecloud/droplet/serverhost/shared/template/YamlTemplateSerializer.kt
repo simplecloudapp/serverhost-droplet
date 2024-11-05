@@ -1,11 +1,15 @@
 package app.simplecloud.droplet.serverhost.shared.template
 
-import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionData
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTypes
+import app.simplecloud.droplet.serverhost.shared.actions.impl.CopyActionData
+import app.simplecloud.droplet.serverhost.shared.actions.path.ActionPath
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.serialize.SerializationException
 import org.spongepowered.configurate.serialize.TypeSerializer
 import java.lang.reflect.Type
+
 
 
 class YamlTemplateSerializer : TypeSerializer<YamlTemplateActionMap> {
@@ -20,6 +24,7 @@ class YamlTemplateSerializer : TypeSerializer<YamlTemplateActionMap> {
     }
 
     override fun deserialize(type: Type?, node: ConfigurationNode?): YamlTemplateActionMap {
+        val data = YamlActionData(YamlActionTypes.COPY, CopyActionData(ActionPath(""), ActionPath("")))
         TODO("Not yet implemented")
     }
 
