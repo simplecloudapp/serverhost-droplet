@@ -1,6 +1,7 @@
 package app.simplecloud.droplet.serverhost.runtime.config
 
 import app.simplecloud.controller.shared.group.Group
+import app.simplecloud.serverhost.config.YamlConfig
 
 open class YamlGroupConfig(dirPath: String) : YamlConfig(dirPath) {
 

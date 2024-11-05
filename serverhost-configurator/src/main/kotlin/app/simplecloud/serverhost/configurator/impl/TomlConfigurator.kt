@@ -1,13 +1,13 @@
-package app.simplecloud.droplet.serverhost.runtime.configurator.impl
+package app.simplecloud.serverhost.configurator.impl
 
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurator
+import app.simplecloud.serverhost.configurator.Configurator
 import com.moandjiezana.toml.Toml
 import com.moandjiezana.toml.TomlWriter
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
 import java.io.File
 
-object TomlServerConfigurator : ServerConfigurator<MutableMap<String, Any>> {
+object TomlConfigurator : Configurator<MutableMap<String, Any>> {
     override fun load(data: ConfigurationNode): MutableMap<String, Any> {
         val parsedData =
             data.childrenMap().map { it.key.toString() to (it.value.get<Any>() ?: Object()) }.toMap().toMutableMap()

@@ -4,12 +4,11 @@ plugins {
 
 dependencies {
     api(project(":serverhost-shared"))
+    implementation(project(":serverhost-configurator"))
     api(rootProject.libs.kotlinCoroutines)
-    api(rootProject.libs.bundles.configurate)
     implementation(rootProject.libs.bundles.log4j)
     implementation(rootProject.libs.clikt)
     implementation(rootProject.libs.commonsIo)
-    implementation(rootProject.libs.toml4j)
 }
 
 application {

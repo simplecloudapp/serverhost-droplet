@@ -1,11 +1,11 @@
-package app.simplecloud.droplet.serverhost.runtime.configurator
+package app.simplecloud.serverhost.configurator
 
 import org.spongepowered.configurate.CommentedConfigurationNode
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
-data class ServerConfigurationEntry(
-    val type: ServerConfiguratorType,
+data class ConfigEntry(
+    val type: ConfiguratorType,
     val path: String,
     val data: CommentedConfigurationNode,
 )

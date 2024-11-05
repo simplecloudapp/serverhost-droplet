@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.config
+package app.simplecloud.serverhost.config
 
 import org.spongepowered.configurate.CommentedConfigurationNode
 import org.spongepowered.configurate.ConfigurationNode

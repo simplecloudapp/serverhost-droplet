@@ -3,7 +3,7 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
+import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurable
 import app.simplecloud.droplet.serverhost.runtime.hack.JarMainClass
 import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
@@ -13,6 +13,7 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
+import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ServerState
 import build.buf.gen.simplecloud.controller.v1.UpdateServerRequest
@@ -31,7 +32,7 @@ import java.util.*
 import kotlin.io.path.absolutePathString
 
 class ServerRunner(
-    private val configurator: ServerConfiguratorExecutor,
+    private val configurator: ConfiguratorExecutor,
     private val templateCopier: TemplateCopier,
     private val serverHost: ServerHost,
     private val args: ServerHostStartCommand,
@@ -162,6 +163,13 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group not supported by this ServerHost.")
             return false
         }
+
+        val usedConfigurator = server.properties["configurator"]
+        if (usedConfigurator == null) {
+            logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group has no assigned configurator.")
+            return false
+        }
+
         val builder = buildProcess(server, runtimeConfig)
 
         if (!builder.directory().exists()) {
@@ -169,7 +177,12 @@ class ServerRunner(
         }
         templateCopier.copy(server, this, TemplateActionType.DEFAULT)
         templateCopier.copy(server, this, TemplateActionType.RANDOM)
-        val configuratorSuccess = configurator.configurate(server, this, args.forwardingSecret)
+        val configuratorSuccess = configurator.configurate(
+            ServerConfigurable(server),
+            usedConfigurator,
+            getServerDir(server),
+            args.forwardingSecret
+        )
         if (!configuratorSuccess) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
             FileUtils.deleteDirectory(getServerDir(server))

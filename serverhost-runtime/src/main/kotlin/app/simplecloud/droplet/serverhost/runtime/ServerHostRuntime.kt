@@ -2,7 +2,6 @@ package app.simplecloud.droplet.serverhost.runtime
 
 import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.host.ServerHost
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfiguratorExecutor
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
@@ -10,6 +9,7 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
+import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
 import org.apache.logging.log4j.LogManager
@@ -24,7 +24,7 @@ class ServerHostRuntime(
 
     private val serverHost =
         ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
-    private val configurator = ServerConfiguratorExecutor()
+    private val configurator = ConfiguratorExecutor()
     private val templateCopier = TemplateCopier(serverHostStartCommand)
     private val controllerChannel = ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel).withCallCredentials(authCallCredentials)

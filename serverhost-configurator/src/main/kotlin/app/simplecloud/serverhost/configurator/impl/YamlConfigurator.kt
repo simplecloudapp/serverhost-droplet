@@ -1,11 +1,11 @@
-package app.simplecloud.droplet.serverhost.runtime.configurator.impl
+package app.simplecloud.serverhost.configurator.impl
 
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurator
+import app.simplecloud.serverhost.configurator.Configurator
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
 
-object YamlServerConfigurator : ServerConfigurator<ConfigurationNode> {
+object YamlConfigurator : Configurator<ConfigurationNode> {
     override fun load(data: ConfigurationNode): ConfigurationNode {
         return data
     }

@@ -1,12 +1,12 @@
-package app.simplecloud.droplet.serverhost.runtime.configurator.impl
+package app.simplecloud.serverhost.configurator.impl
 
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurator
+import app.simplecloud.serverhost.configurator.Configurator
 import org.spongepowered.configurate.ConfigurationNode
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 
-object TextServerConfigurator : ServerConfigurator<String> {
+object TextConfigurator : Configurator<String> {
     override fun load(data: ConfigurationNode): String? {
         return data.string
     }
