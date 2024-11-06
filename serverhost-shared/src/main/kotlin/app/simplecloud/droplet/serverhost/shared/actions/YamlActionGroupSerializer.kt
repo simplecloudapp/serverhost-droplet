@@ -8,7 +8,8 @@ import java.lang.reflect.Type
 class YamlActionGroupSerializer(
     private val actionFiles: List<YamlActionFile>,
     private val currentFile: YamlActionFile,
-    private val currentGroup: YamlActionGroup
+    private val currentGroup: YamlActionGroup,
+    private val mode: YamlActionDataDescriptor,
 ) : TypeSerializer<YamlActionGroup> {
 
     private val dataSerializer = YamlActionDataSerializer()
@@ -24,33 +25,50 @@ class YamlActionGroupSerializer(
         if (node == null) return null
         var refIndex = 0;
         var dataIndex = 0;
-        val refList = sortedMapOf<String, YamlActionGroup>()
+        var flowIndex = 0;
+        val refList = mutableListOf<Pair<String, YamlActionGroup>>()
         val dataList = mutableListOf<YamlActionData>()
-        val flowList = mutableListOf<Pair<YamlActionDataDescriptor, Int>>()
+        val flowMap = mutableMapOf<Int, Pair<YamlActionDataDescriptor, Int>>()
         node.childrenList().forEach { child ->
-            if(child.hasChild("ref")) {
+            if(child.hasChild("ref") && mode == YamlActionDataDescriptor.REF) {
                 val ref = nonVirtualNode(child, "ref").string ?: return@forEach
                 val refGroup = findRef(ref) ?: throw SerializationException(child.node("ref"), String::class.java, "The reference $ref does not point to any group")
-                refList[ref] = refGroup
-                flowList.add(Pair(YamlActionDataDescriptor.REF, refIndex))
+                refList.add(Pair(ref, refGroup))
+                flowMap[flowIndex] = Pair(YamlActionDataDescriptor.REF, refIndex)
                 refIndex++
                 return@forEach
             }
-            val data = dataSerializer.deserialize(YamlActionData::class.java, child) ?: return@forEach
-            dataList.add(data)
-            flowList.add(Pair(YamlActionDataDescriptor.DATA, dataIndex))
-            dataIndex++
+            if(child.hasChild("type") && mode == YamlActionDataDescriptor.DATA) {
+                val data = dataSerializer.deserialize(YamlActionData::class.java, child) ?: return@forEach
+                dataList.add(data)
+                flowMap[flowIndex] = Pair(YamlActionDataDescriptor.DATA, dataIndex)
+                dataIndex++
+            }
+            flowIndex++;
         }
 
-        return YamlActionGroup(currentGroup.name, dataList, refList, flowList)
+        val combinedDataList = mutableListOf<YamlActionData>()
+        combinedDataList.addAll(currentGroup.actionDataList)
+        combinedDataList.addAll(dataList)
+
+        val combinedRefList = mutableListOf<Pair<String, YamlActionGroup>>()
+        combinedRefList.addAll(currentGroup.actionRefList)
+        combinedRefList.addAll(refList)
+
+        val combinedFlow = mutableMapOf<Int, Pair<YamlActionDataDescriptor, Int>>()
+        combinedFlow.putAll(currentGroup.actionFlowList)
+        combinedFlow.putAll(flowMap)
+
+        return YamlActionGroup(currentGroup.name, combinedDataList, combinedRefList, combinedFlow)
     }
 
     override fun serialize(type: Type?, obj: YamlActionGroup?, node: ConfigurationNode) {
         if (obj == null) return
-        for (flowElement in obj.actionFlowList) {
+        for (flowKey in obj.actionFlowList.keys.sorted()) {
             val childNode = node.appendListNode()
+            val flowElement = obj.actionFlowList[flowKey] ?: continue
             when(flowElement.first) {
-                YamlActionDataDescriptor.REF -> childNode.node("ref").set(obj.actionRefMap.keys.elementAt(flowElement.second))
+                YamlActionDataDescriptor.REF -> childNode.node("ref").set(obj.actionRefList.elementAt(flowElement.second).first)
                 YamlActionDataDescriptor.DATA -> {
                     val element = obj.actionDataList.elementAt(flowElement.second)
                     dataSerializer.serialize(YamlActionData::class.java, element, childNode)

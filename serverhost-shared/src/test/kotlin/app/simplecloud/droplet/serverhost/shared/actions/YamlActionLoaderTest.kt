@@ -6,29 +6,18 @@ import kotlin.test.assertEquals
 
 class YamlActionLoaderTest {
 
-    @Test
-    fun load() {
-        val expected = listOf(
-            YamlActionFile(
-                "test",
-                listOf(
-                    YamlActionGroup("test", listOf()),
-                    YamlActionGroup("test2", listOf()),
-                    YamlActionGroup("test10", listOf())
-                )
-            ),
-            YamlActionFile(
-                "test2",
-                listOf(
-                    YamlActionGroup("test", listOf()),
-                    YamlActionGroup("test2", listOf()),
-                    YamlActionGroup("test10", listOf())
-                )
-            )
-        )
+    private val loader = YamlActionLoader()
+    private val directory = Paths.get("actions")
 
-        val loader = YamlActionLoader()
-        val result = loader.loadFiles(Paths.get("actions"))
-        assertEquals(expected, result)
+    @Test
+    fun testFileLoad() {
+        assertEquals(LoadResults.FILE_LOAD_RESULT, loader.loadActionFiles(directory))
+    }
+
+    @Test
+    fun testGroupLoad() {
+        val files = loader.loadActionFiles(directory)
+        val result = loader.loadActionGroups(directory, files)
+        assertEquals(LoadResults.GROUP_LOAD_RESULT, result)
     }
 }

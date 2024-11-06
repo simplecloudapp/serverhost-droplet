@@ -1,0 +1,18 @@
+cache-pull:
+  - from: "%template%/cache/%group%"
+    to: "%server%"
+    type: "copy"
+
+cache-paper:
+  - from: "%server%/plugins/.paper-remapped/"
+    to: "%template%/cache/%group%/plugins/.paper-remapped"
+    type: "copy"
+  - ref: cache-spigot
+
+cache-spigot:
+  - from: "%server%/libraries"
+    to: "%template%/cache/%group%/libraries"
+    type: "copy"
+  - from: "%server%/versions"
+    to: "%template%/cache/%group%/versions"
+    type: "copy"
