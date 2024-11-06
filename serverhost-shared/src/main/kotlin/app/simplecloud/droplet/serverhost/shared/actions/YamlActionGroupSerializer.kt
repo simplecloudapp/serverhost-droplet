@@ -13,6 +13,8 @@ class YamlActionGroupSerializer(
 ) : TypeSerializer<YamlActionGroup> {
 
     private val dataSerializer = YamlActionDataSerializer()
+    //The reference to the current group
+    private val selfRef = "${currentFile.fileName}/${currentGroup.name}"
 
     private fun nonVirtualNode(source: ConfigurationNode, vararg path: Any): ConfigurationNode {
         if (!source.hasChild(*path)) {
@@ -23,7 +25,7 @@ class YamlActionGroupSerializer(
 
     override fun deserialize(type: Type?, node: ConfigurationNode?): YamlActionGroup? {
         if (node == null) return null
-        val selfRef = "${currentFile.fileName}/${currentGroup.name}"
+
         refTree[selfRef] = listOf()
         var refIndex = 0;
         var dataIndex = 0;
@@ -78,6 +80,7 @@ class YamlActionGroupSerializer(
         }
     }
 
+    //Resolve a reference by a ref string
     private fun findRef(ref: String): Pair<YamlActionFile, YamlActionGroup>? {
         if (!ref.contains("/")) return currentFile.groups.firstOrNull { it.name == ref }?.let { Pair(currentFile, it) }
         val args = ref.split("/")

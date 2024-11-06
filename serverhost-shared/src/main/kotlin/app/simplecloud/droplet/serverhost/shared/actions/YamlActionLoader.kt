@@ -16,12 +16,13 @@ object YamlActionLoader {
     fun load(directory: Path): Map<String, List<Pair<YamlActionTypes, Any>>> {
         val refTree = mutableMapOf<String, List<String>>()
         var actionFiles = loadActionFiles(directory)
-        //This will now deserialize all the groups that were loaded and update the ist
+        //This will now deserialize all the groups that were loaded and update the list
         actionFiles = loadActionGroups(directory, actionFiles, refTree)
         val loadOrder = resolveRefTree(refTree)
         return constructActions(loadOrder, actionFiles)
     }
 
+    //Constructs actions into a format that is easier to deal with for execution
     fun constructActions(
         loadOrder: List<String>,
         actionFiles: List<YamlActionFile>
@@ -57,6 +58,7 @@ object YamlActionLoader {
         return result
     }
 
+    //Resolves the ref tree and creates a load order by it. If no load order can be created (circular refs) an error is thrown.
     fun resolveRefTree(refTree: MutableMap<String, List<String>>): List<String> {
         val loadOrder = mutableListOf<String>()
         val visited = mutableMapOf<String, Boolean>()  // true means fully processed, false means processing
@@ -72,6 +74,7 @@ object YamlActionLoader {
         return loadOrder
     }
 
+    //This deserializes all groups
     fun loadActionGroups(
         directory: Path,
         actionFiles: List<YamlActionFile>,
@@ -90,6 +93,7 @@ object YamlActionLoader {
         return returned
     }
 
+    //This only deserializes the "skeleton" of actions
     fun loadActionFiles(directory: Path): List<YamlActionFile> {
         val actionFiles = mutableListOf<YamlActionFile>()
         walkActionFiles(directory) { entry ->
@@ -107,6 +111,7 @@ object YamlActionLoader {
         }
     }
 
+    //This deserializes one action group
     private fun deserializeGroup(
         file: Path,
         actionFiles: List<YamlActionFile>,
