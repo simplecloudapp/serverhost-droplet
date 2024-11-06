@@ -62,7 +62,7 @@ object LoadResults {
                             )
                         )
                     ),
-                    listOf(Pair("cache-spigot", GROUP_LOAD_RESULT_CACHE_SPIGOT)),
+                    listOf("cache/cache-spigot"),
                     mapOf(0 to Pair(YamlActionDataDescriptor.DATA, 0), 1 to Pair(YamlActionDataDescriptor.REF, 0))
                 ),
                 GROUP_LOAD_RESULT_CACHE_SPIGOT
