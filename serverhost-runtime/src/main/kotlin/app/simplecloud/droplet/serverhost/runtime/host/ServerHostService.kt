@@ -4,10 +4,13 @@ import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
+import app.simplecloud.droplet.serverhost.shared.ScreenLogStreamer
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import build.buf.gen.simplecloud.controller.v1.*
 import io.grpc.Status
 import io.grpc.StatusException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class ServerHostService(
     private val serverHost: ServerHost,
@@ -35,7 +38,7 @@ class ServerHostService(
 
     override suspend fun stopServer(request: ServerDefinition): ServerDefinition {
         val stopped = runner.stopServer(Server.fromDefinition(request))
-        if(!stopped) {
+        if (!stopped) {
             throw StatusException(Status.INTERNAL.withDescription("Could not stop server"))
         }
         return request
@@ -48,6 +51,29 @@ class ServerHostService(
             throw StatusException(Status.INTERNAL.withDescription("Could not reattach server"))
         }
         return server.toDefinition()
+    }
+
+    override suspend fun executeCommand(request: ServerHostServerExecuteCommandRequest): ServerHostServerExecuteCommandResponse {
+        val process = runner.getProcess(request.serverId)
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
+        val streamer = ScreenLogStreamer(process.pid())
+        if (!streamer.isScreen()) throw StatusException(Status.UNAVAILABLE.withDescription("Only servers started with screen have access to logs."))
+        streamer.sendCommand(request.command)
+        return serverHostServerExecuteCommandResponse {}
+    }
+
+    override fun streamServerLogs(request: ServerHostStreamServerLogsRequest): Flow<ServerHostStreamServerLogsResponse> {
+        val process = runner.getProcess(request.serverId)
+            ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
+        val streamer = ScreenLogStreamer(process.pid())
+        if (!streamer.isScreen()) throw StatusException(Status.UNAVAILABLE.withDescription("Only servers started with screen have access to logs."))
+        try {
+            return streamer.readScreenLogs()
+        } catch (e: StatusException) {
+            e.printStackTrace()
+            streamer.stopHook()
+            return flow {  }
+        }
     }
 
 }

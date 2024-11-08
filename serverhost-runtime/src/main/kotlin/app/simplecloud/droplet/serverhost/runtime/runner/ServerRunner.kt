@@ -237,6 +237,10 @@ class ServerRunner(
         }
     }
 
+    fun getProcess(uniqueId: String): ProcessHandle? {
+        return serverToProcessHandle.getOrDefault(serverToProcessHandle.keys.firstOrNull { it.uniqueId == uniqueId}, null)
+    }
+
     fun reattachServer(server: Server): Boolean {
         if (containsServer(server.uniqueId)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
