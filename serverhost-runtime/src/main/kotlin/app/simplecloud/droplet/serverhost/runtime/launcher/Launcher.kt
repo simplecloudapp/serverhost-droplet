@@ -5,7 +5,7 @@ import org.apache.logging.log4j.LogManager
 
 suspend fun main(args: Array<String>) {
     val metricsCollector = try {
-        MetricsCollector.create("controller")
+        MetricsCollector.create("serverhost-droplet")
     } catch (e: Exception) {
         null
     }
