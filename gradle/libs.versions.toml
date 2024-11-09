@@ -5,6 +5,7 @@ shadow = "8.1.1"
 log4j = "2.20.0"
 simpleCloudController = "0.0.30-dev.4d0758b"
 simpleCloudPubSub = "1.0.4"
+simplecloud-metrics = "1.0.0"
 commonsIo = "2.15.1"
 configurate = "4.1.2"
 clikt = "4.3.0"
@@ -24,6 +25,7 @@ log4jSlf4j = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref
 
 simpleCloudController = { module = "app.simplecloud.controller:controller-api", version.ref = "simpleCloudController" }
 simpleCloudPubSub = { module = "app.simplecloud:simplecloud-pubsub", version.ref = "simpleCloudPubSub" }
+simplecloud-metrics = { module = "app.simplecloud:internal-metrics-api", version.ref = "simplecloud-metrics" }
 
 commonsIo = { module = "commons-io:commons-io", version.ref = "commonsIo" }
 

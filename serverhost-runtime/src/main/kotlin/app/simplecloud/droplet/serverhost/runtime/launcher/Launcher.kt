@@ -1,15 +1,22 @@
 package app.simplecloud.droplet.serverhost.runtime.launcher
 
+import app.simplecloud.metrics.internal.api.MetricsCollector
 import org.apache.logging.log4j.LogManager
 
-fun main(args: Array<String>) {
-    configureLog4j()
-    ServerHostStartCommand().main(args)
+suspend fun main(args: Array<String>) {
+    val metricsCollector = try {
+        MetricsCollector.create("controller")
+    } catch (e: Exception) {
+        null
+    }
+    configureLog4j(metricsCollector)
+    ServerHostStartCommand(metricsCollector).main(args)
 }
 
-fun configureLog4j() {
+fun configureLog4j(metricsCollector: MetricsCollector?) {
     val globalExceptionHandlerLogger = LogManager.getLogger("GlobalExceptionHandler")
     Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+        metricsCollector?.recordError(throwable)
         globalExceptionHandlerLogger.error("Uncaught exception in thread ${thread.name}", throwable)
     }
 }
