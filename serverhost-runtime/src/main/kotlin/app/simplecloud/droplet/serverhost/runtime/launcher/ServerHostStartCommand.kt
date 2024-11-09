@@ -41,7 +41,7 @@ class ServerHostStartCommand : CliktCommand() {
     val runningServersPath by option(help = "Path to the running servers (running)", envvar = "RUNNING_SERVERS_PATH")
         .path()
         .default(Path.of("running"))
-
+    val logsPath by option(help = "Path to the logs files (logs)", envvar = "LOGS_PATH").path().default(Path.of("logs", "servers"))
     val grpcHost: String by option(help = "Grpc host (default: localhost)", envvar = "GRPC_HOST").default("localhost")
     val grpcPort: Int by option(help = "Grpc port (default: 5816)", envvar = "GRPC_PORT").int().default(5816)
 

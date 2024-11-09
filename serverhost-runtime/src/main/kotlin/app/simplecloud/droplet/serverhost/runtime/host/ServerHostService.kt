@@ -4,8 +4,9 @@ import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
-import app.simplecloud.droplet.serverhost.shared.ScreenLogStreamer
+import app.simplecloud.droplet.serverhost.shared.logs.LogStreamer
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
+import app.simplecloud.droplet.serverhost.shared.logs.ScreenExecutor
 import build.buf.gen.simplecloud.controller.v1.*
 import io.grpc.Status
 import io.grpc.StatusException
@@ -56,17 +57,16 @@ class ServerHostService(
     override suspend fun executeCommand(request: ServerHostServerExecuteCommandRequest): ServerHostServerExecuteCommandResponse {
         val process = runner.getProcess(request.serverId)
             ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
-        val streamer = ScreenLogStreamer(process.pid())
+        val streamer = ScreenExecutor(process.pid())
         if (!streamer.isScreen()) throw StatusException(Status.UNAVAILABLE.withDescription("Only servers started with screen have access to logs."))
         streamer.sendCommand(request.command)
         return serverHostServerExecuteCommandResponse {}
     }
 
     override fun streamServerLogs(request: ServerHostStreamServerLogsRequest): Flow<ServerHostStreamServerLogsResponse> {
-        val process = runner.getProcess(request.serverId)
+        val server = runner.getServer(request.serverId)
             ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
-        val streamer = ScreenLogStreamer(process.pid())
-        if (!streamer.isScreen()) throw StatusException(Status.UNAVAILABLE.withDescription("Only servers started with screen have access to logs."))
+        val streamer = LogStreamer(runner.getServerLogFile(server))
         try {
             return streamer.readScreenLogs()
         } catch (e: StatusException) {

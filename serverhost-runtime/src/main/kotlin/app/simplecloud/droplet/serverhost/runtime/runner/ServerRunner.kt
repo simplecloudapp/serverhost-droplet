@@ -28,8 +28,10 @@ import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.exists
 
 class ServerRunner(
     private val configurator: ConfiguratorExecutor,
@@ -54,7 +56,7 @@ class ServerRunner(
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
     private val screenOptions =
-        mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
+        mutableListOf("-L", "-Logfile", "%LOG_FILE%", "-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
     private val stopTries = mutableMapOf<String, Int>()
     private val maxGracefulTries = 3
@@ -71,7 +73,7 @@ class ServerRunner(
         return serverToProcessHandle.any { it.key.uniqueId == uniqueId }
     }
 
-    private fun getServer(uniqueId: String): Server? {
+    fun getServer(uniqueId: String): Server? {
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
@@ -145,6 +147,10 @@ class ServerRunner(
         }
 
         return File(basicUrl)
+    }
+
+    fun getServerLogFile(server: Server): Path {
+        return Paths.get(args.logsPath.absolutePathString(), "${server.group}-${server.numericalId}-${server.uniqueId}.log")
     }
 
     private fun isServerDir(server: Server, path: Path): Boolean {
@@ -291,6 +297,12 @@ class ServerRunner(
         val command = mutableListOf<String>()
         command.add(jvmArgs.executable ?: defaultExecutable)
         val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()
+
+        val logFile = getServerLogFile(server)
+        if(!logFile.parent.exists()) {
+            FileUtils.createParentDirectories(logFile.toFile())
+        }
+
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
@@ -300,6 +312,7 @@ class ServerRunner(
             "%UNIQUE_ID%" to server.uniqueId,
             "%MAIN_CLASS%" to JarMainClass.find(serverJar),
             "%SERVER_FILE%" to serverJar.absolutePathString(),
+            "%LOG_FILE%" to logFile.absolutePathString(),
         )
         placeholders.putAll(server.properties.map {
             "%${it.key.uppercase().replace("-", "_")}%" to it.value
@@ -311,6 +324,7 @@ class ServerRunner(
         if (!jvmArgs.arguments.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
         }
+        println(command.joinToString(" "))
         val builder = ProcessBuilder()
             .command(command)
             .directory(getServerDir(server, runtimeConfig))
@@ -322,6 +336,9 @@ class ServerRunner(
         builder.environment()["CONTROLLER_PUBSUB_HOST"] = this.args.pubSubGrpcHost
         builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
+        println(getServerLogFile(server).toFile().absolutePath)
+        if(jvmArgs.executable?.lowercase() != "screen")
+            builder.redirectOutput(getServerLogFile(server).toFile())
         return builder
     }
 
