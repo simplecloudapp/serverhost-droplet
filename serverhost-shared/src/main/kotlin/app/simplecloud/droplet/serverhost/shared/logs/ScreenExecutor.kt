@@ -24,14 +24,15 @@ class ScreenExecutor(private var pid: Long) {
         return isScreen
     }
 
-    private fun startScreenProcess(): Process {
-        val command = arrayOf("bash", "-c", "screen", "-X", pid.toString())
+    private fun startScreenProcess(toSend: String): Process {
+        //TODO: Test this on not arch
+        val command = arrayOf("screen", "-S", pid.toString(), "-X", "stuff \"$toSend\\n\"")
         return Runtime.getRuntime().exec(command)
     }
 
     // Send a command to the screen session
     fun sendCommand(command: String) {
-        val process = startScreenProcess()
+        val process = startScreenProcess(command)
 
         // Get the input stream and write the command to it
         val outputStream: OutputStream = process.outputStream

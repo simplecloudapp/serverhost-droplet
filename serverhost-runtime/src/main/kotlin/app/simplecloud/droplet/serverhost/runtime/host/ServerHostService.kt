@@ -3,20 +3,26 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
+import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
-import app.simplecloud.droplet.serverhost.shared.logs.LogStreamer
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
+import app.simplecloud.droplet.serverhost.shared.logs.LogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenExecutor
 import build.buf.gen.simplecloud.controller.v1.*
 import io.grpc.Status
 import io.grpc.StatusException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import org.apache.logging.log4j.LogManager
+import kotlin.math.log
 
 class ServerHostService(
     private val serverHost: ServerHost,
     private val runner: ServerRunner,
 ) : ServerHostServiceGrpcKt.ServerHostServiceCoroutineImplBase() {
+
+    private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
+
     override suspend fun startServer(request: ServerHostStartServerRequest): ServerDefinition {
         val group = Group.fromDefinition(request.group)
         val port = PortProcessHandle.findNextFreePort(group.startPort.toInt(), request.server)
@@ -66,13 +72,12 @@ class ServerHostService(
     override fun streamServerLogs(request: ServerHostStreamServerLogsRequest): Flow<ServerHostStreamServerLogsResponse> {
         val server = runner.getServer(request.serverId)
             ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
-        val streamer = LogStreamer(runner.getServerLogFile(server))
+        val streamer = LogStreamer(runner.getServerLogFile(server), logger)
         try {
             return streamer.readScreenLogs()
         } catch (e: StatusException) {
             e.printStackTrace()
-            streamer.stopHook()
-            return flow {  }
+            return flow { }
         }
     }
 

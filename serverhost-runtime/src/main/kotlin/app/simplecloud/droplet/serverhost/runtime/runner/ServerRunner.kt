@@ -108,7 +108,6 @@ class ServerRunner(
         try {
             val ping = ServerPinger.ping(address)
             if (handle == null) return null
-            logger.info("Pinged server ${server.group}-${server.numericalId} successfully")
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.serverState =
@@ -122,10 +121,9 @@ class ServerRunner(
                 this.playerCount = ping.players.online.toLong()
                 this.cloudProperties["motd"] = ping.description.text
             })
-            logger.info("Updated server ${server.group}-${server.numericalId} with new state ${copiedServer.state}")
             return copiedServer
         } catch (e: Exception) {
-            logger.info("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
+            logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
             if (!portBound) {
                 stopServer(server)
@@ -324,7 +322,6 @@ class ServerRunner(
         if (!jvmArgs.arguments.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
         }
-        println(command.joinToString(" "))
         val builder = ProcessBuilder()
             .command(command)
             .directory(getServerDir(server, runtimeConfig))
@@ -336,7 +333,6 @@ class ServerRunner(
         builder.environment()["CONTROLLER_PUBSUB_HOST"] = this.args.pubSubGrpcHost
         builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
-        println(getServerLogFile(server).toFile().absolutePath)
         if(jvmArgs.executable?.lowercase() != "screen")
             builder.redirectOutput(getServerLogFile(server).toFile())
         return builder
