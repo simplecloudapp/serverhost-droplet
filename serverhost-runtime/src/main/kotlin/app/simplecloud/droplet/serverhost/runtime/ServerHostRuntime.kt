@@ -12,8 +12,8 @@ import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
+import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
-import kotlin.concurrent.thread
 
 class ServerHostRuntime(
     private val serverHostStartCommand: ServerHostStartCommand
@@ -26,8 +26,10 @@ class ServerHostRuntime(
         ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
     private val configurator = ConfiguratorExecutor()
     private val templateCopier = TemplateCopier(serverHostStartCommand)
-    private val controllerChannel = ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
-    private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel).withCallCredentials(authCallCredentials)
+    private val controllerChannel =
+        ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
+    private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
+        .withCallCredentials(authCallCredentials)
     private val runner = ServerRunner(
         configurator,
         templateCopier,
@@ -38,22 +40,38 @@ class ServerHostRuntime(
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()
 
-    fun start() {
+    suspend fun start() {
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
         attach()
         resourceCopier.copyAll("copy")
         runner.startServerStateChecker()
         templateCopier.loadTemplates()
+
+        suspendCancellableCoroutine<Unit> { continuation ->
+            Runtime.getRuntime().addShutdownHook(Thread {
+                server.shutdown()
+                continuation.resume(Unit) { cause, _, _ ->
+                    logger.info("Server shutdown due to: $cause")
+                }
+            })
+        }
     }
 
     private fun startGrpcServer() {
         logger.info("Starting gRPC server...")
-        thread {
-            server.start()
-            server.awaitTermination()
+
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                server.start()
+                server.awaitTermination()
+            } catch (e: Exception) {
+                logger.error("Error in gRPC server", e)
+                throw e
+            }
         }
     }
+
 
     private fun attach() {
         logger.info("Attaching to controller...")

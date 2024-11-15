@@ -3,7 +3,7 @@ package app.simplecloud.droplet.serverhost.runtime.launcher
 import app.simplecloud.controller.shared.secret.AuthFileSecretFactory
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.metrics.internal.api.MetricsCollector
-import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.defaultLazy
@@ -18,7 +18,7 @@ import java.nio.file.Path
 
 class ServerHostStartCommand(
     private val metricsCollector: MetricsCollector?
-) : CliktCommand() {
+) : SuspendingCliktCommand() {
     init {
         context {
             valueSource = PropertiesValueSource.from(File("server-host.properties"))
@@ -82,7 +82,7 @@ class ServerHostStartCommand(
         .boolean()
         .default(true)
 
-    override fun run() {
+    override suspend fun run() {
         if (trackMetrics) {
             metricsCollector?.start()
         }

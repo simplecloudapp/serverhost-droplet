@@ -1,6 +1,7 @@
 package app.simplecloud.droplet.serverhost.runtime.launcher
 
 import app.simplecloud.metrics.internal.api.MetricsCollector
+import com.github.ajalt.clikt.command.main
 import org.apache.logging.log4j.LogManager
 
 suspend fun main(args: Array<String>) {
@@ -9,6 +10,7 @@ suspend fun main(args: Array<String>) {
     } catch (e: Exception) {
         null
     }
+    println(metricsCollector)
     configureLog4j(metricsCollector)
     ServerHostStartCommand(metricsCollector).main(args)
 }
