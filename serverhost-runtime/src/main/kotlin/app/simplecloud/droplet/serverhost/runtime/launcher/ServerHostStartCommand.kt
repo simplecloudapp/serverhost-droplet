@@ -22,7 +22,7 @@ class ServerHostStartCommand(
 ) : SuspendingCliktCommand() {
     init {
         context {
-            valueSource = PropertiesValueSource.from(File("server-host.properties"), false, ValueSource.envvarKey())
+            valueSource = PropertiesValueSource.from(File("serverhost.properties"), false, ValueSource.envvarKey())
         }
     }
 
