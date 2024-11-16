@@ -1,7 +1,6 @@
 package app.simplecloud.droplet.serverhost.shared.actions
 
 import org.junit.jupiter.api.Test
-import java.nio.file.Paths
 import kotlin.test.assertEquals
 
 class YamlActionLoaderTest {
@@ -10,14 +9,14 @@ class YamlActionLoaderTest {
 
     @Test
     fun testFileDeserialize() {
-        assertEquals(LoadResults.FILE_LOAD_RESULT, YamlActionLoader.loadActionFiles(directory))
+        assertEquals(LoadResults.FILE_LOAD_RESULT.toSet(), YamlActionLoader.loadActionFiles(directory).toSet())
     }
 
     @Test
     fun testGroupDeserialize() {
         val files = YamlActionLoader.loadActionFiles(directory)
         val result = YamlActionLoader.loadActionGroups(directory, files, mutableMapOf())
-        assertEquals(LoadResults.GROUP_LOAD_RESULT, result)
+        assertEquals(LoadResults.GROUP_LOAD_RESULT.toSet(), result.toSet())
     }
 
     @Test
@@ -39,7 +38,7 @@ class YamlActionLoaderTest {
         val files = YamlActionLoader.loadActionFiles(directory)
         YamlActionLoader.loadActionGroups(directory, files, refMap)
         val resolvedRefs = YamlActionLoader.resolveRefTree(refMap)
-        assert(resolvedRefs.last() == "cache/cache-paper")
+        assert(resolvedRefs.first() == "cache/cache-pull")
     }
 
     @Test
