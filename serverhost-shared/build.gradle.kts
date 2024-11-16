@@ -3,12 +3,12 @@ plugins {
 }
 
 dependencies {
-    api(libs.simpleCloudController)
-    api(libs.simpleCloudPubSub)
+    api(libs.simplecloud.controller)
+    api(libs.simplecloud.pubsub)
     api(project(":serverhost-configurator"))
     implementation(rootProject.libs.gson)
     implementation(rootProject.libs.bundles.log4j)
-    testImplementation(rootProject.libs.kotlinTest)
+    testImplementation(rootProject.libs.kotlin.test)
 }
 
 publishing {

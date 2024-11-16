@@ -4,11 +4,11 @@ plugins {
 
 dependencies {
     api(project(":serverhost-shared"))
-    api(rootProject.libs.kotlinCoroutines)
+    api(rootProject.libs.kotlin.coroutines)
     implementation(rootProject.libs.simplecloud.metrics)
     implementation(rootProject.libs.bundles.log4j)
     implementation(rootProject.libs.clikt)
-    implementation(rootProject.libs.commonsIo)
+    implementation(rootProject.libs.commons.io)
 }
 
 application {
