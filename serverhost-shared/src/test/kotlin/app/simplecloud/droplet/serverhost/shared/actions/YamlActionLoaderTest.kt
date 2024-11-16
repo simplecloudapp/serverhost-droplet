@@ -2,6 +2,7 @@ package app.simplecloud.droplet.serverhost.shared.actions
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.fail
 
 class YamlActionLoaderTest {
 
@@ -38,7 +39,11 @@ class YamlActionLoaderTest {
         val files = YamlActionLoader.loadActionFiles(directory)
         YamlActionLoader.loadActionGroups(directory, files, refMap)
         val resolvedRefs = YamlActionLoader.resolveRefTree(refMap)
-        assert(resolvedRefs.first() == "cache/cache-pull")
+        var resolvedDependency = false
+        resolvedRefs.forEach {
+            if(!resolvedDependency && (it == "cache/cache-paper")) fail("cache/cache-spigot was not loaded before cache/cache-paper")
+            if(it == "cache/cache-spigot") resolvedDependency = true
+        }
     }
 
     @Test
