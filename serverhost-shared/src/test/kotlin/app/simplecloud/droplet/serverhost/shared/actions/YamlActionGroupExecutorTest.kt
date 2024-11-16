@@ -7,7 +7,7 @@ import java.nio.file.Paths
 
 class YamlActionGroupExecutorTest {
 
-    private val directory = Paths.get("actions")
+    private val directory = ResourcePath.get("actions")
 
     @Test
     fun execute() {
