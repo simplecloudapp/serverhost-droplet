@@ -4,7 +4,6 @@ plugins {
 
 dependencies {
     api(project(":serverhost-shared"))
-    implementation(project(":serverhost-configurator"))
     api(rootProject.libs.kotlinCoroutines)
     implementation(rootProject.libs.simplecloud.metrics)
     implementation(rootProject.libs.bundles.log4j)

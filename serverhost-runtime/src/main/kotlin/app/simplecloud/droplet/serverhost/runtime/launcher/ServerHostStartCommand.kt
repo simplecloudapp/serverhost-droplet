@@ -12,6 +12,7 @@ import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import com.github.ajalt.clikt.sources.PropertiesValueSource
+import com.github.ajalt.clikt.sources.ValueSource
 import java.io.File
 import java.net.InetAddress
 import java.nio.file.Path
@@ -21,7 +22,7 @@ class ServerHostStartCommand(
 ) : SuspendingCliktCommand() {
     init {
         context {
-            valueSource = PropertiesValueSource.from(File("server-host.properties"))
+            valueSource = PropertiesValueSource.from(File("server-host.properties"), false, ValueSource.envvarKey())
         }
     }
 
@@ -45,7 +46,8 @@ class ServerHostStartCommand(
     val runningServersPath by option(help = "Path to the running servers (running)", envvar = "RUNNING_SERVERS_PATH")
         .path()
         .default(Path.of("running"))
-
+    val logsPath by option(help = "Path to the logs files (logs)", envvar = "LOGS_PATH").path()
+        .default(Path.of("logs", "servers"))
     val grpcHost: String by option(help = "Grpc host (default: localhost)", envvar = "GRPC_HOST").default("localhost")
     val grpcPort: Int by option(help = "Grpc port (default: 5816)", envvar = "GRPC_PORT").int().default(5816)
 

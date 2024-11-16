@@ -28,8 +28,10 @@ import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.exists
 
 class ServerRunner(
     private val configurator: ConfiguratorExecutor,
@@ -54,7 +56,7 @@ class ServerRunner(
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
     private val screenOptions =
-        mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
+        mutableListOf("-L", "-Logfile", "%LOG_FILE%", "-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
     private val stopTries = mutableMapOf<String, Int>()
     private val maxGracefulTries = 3
@@ -71,7 +73,7 @@ class ServerRunner(
         return serverToProcessHandle.any { it.key.uniqueId == uniqueId }
     }
 
-    private fun getServer(uniqueId: String): Server? {
+    fun getServer(uniqueId: String): Server? {
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
@@ -106,7 +108,6 @@ class ServerRunner(
         try {
             val ping = ServerPinger.ping(address)
             if (handle == null) return null
-            logger.info("Pinged server ${server.group}-${server.numericalId} successfully")
             PortProcessHandle.removePreBind(server.port.toInt())
             val copiedServer = Server.fromDefinition(server.toDefinition().copy {
                 this.serverState =
@@ -120,10 +121,9 @@ class ServerRunner(
                 this.playerCount = ping.players.online.toLong()
                 this.cloudProperties["motd"] = ping.description.text
             })
-            logger.info("Updated server ${server.group}-${server.numericalId} with new state ${copiedServer.state}")
             return copiedServer
         } catch (e: Exception) {
-            logger.info("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
+            logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
             if (!portBound) {
                 stopServer(server)
@@ -145,6 +145,10 @@ class ServerRunner(
         }
 
         return File(basicUrl)
+    }
+
+    fun getServerLogFile(server: Server): Path {
+        return Paths.get(args.logsPath.absolutePathString(), "${server.group}-${server.numericalId}-${server.uniqueId}.log")
     }
 
     private fun isServerDir(server: Server, path: Path): Boolean {
@@ -237,6 +241,10 @@ class ServerRunner(
         }
     }
 
+    fun getProcess(uniqueId: String): ProcessHandle? {
+        return serverToProcessHandle.getOrDefault(serverToProcessHandle.keys.firstOrNull { it.uniqueId == uniqueId}, null)
+    }
+
     fun reattachServer(server: Server): Boolean {
         if (containsServer(server.uniqueId)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
@@ -287,6 +295,12 @@ class ServerRunner(
         val command = mutableListOf<String>()
         command.add(jvmArgs.executable ?: defaultExecutable)
         val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()
+
+        val logFile = getServerLogFile(server)
+        if(!logFile.parent.exists()) {
+            FileUtils.createParentDirectories(logFile.toFile())
+        }
+
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
@@ -296,6 +310,7 @@ class ServerRunner(
             "%UNIQUE_ID%" to server.uniqueId,
             "%MAIN_CLASS%" to JarMainClass.find(serverJar),
             "%SERVER_FILE%" to serverJar.absolutePathString(),
+            "%LOG_FILE%" to logFile.absolutePathString(),
         )
         placeholders.putAll(server.properties.map {
             "%${it.key.uppercase().replace("-", "_")}%" to it.value
@@ -318,6 +333,8 @@ class ServerRunner(
         builder.environment()["CONTROLLER_PUBSUB_HOST"] = this.args.pubSubGrpcHost
         builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
+        if(jvmArgs.executable?.lowercase() != "screen")
+            builder.redirectOutput(getServerLogFile(server).toFile())
         return builder
     }
 
