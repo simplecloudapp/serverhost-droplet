@@ -2,11 +2,13 @@ package app.simplecloud.droplet.serverhost.runtime.launcher
 
 import app.simplecloud.controller.shared.secret.AuthFileSecretFactory
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
-import com.github.ajalt.clikt.core.CliktCommand
+import app.simplecloud.metrics.internal.api.MetricsCollector
+import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import com.github.ajalt.clikt.sources.PropertiesValueSource
@@ -15,7 +17,9 @@ import java.io.File
 import java.net.InetAddress
 import java.nio.file.Path
 
-class ServerHostStartCommand : CliktCommand() {
+class ServerHostStartCommand(
+    private val metricsCollector: MetricsCollector?
+) : SuspendingCliktCommand() {
     init {
         context {
             valueSource = PropertiesValueSource.from(File("server-host.properties"), false, ValueSource.envvarKey())
@@ -76,7 +80,15 @@ class ServerHostStartCommand : CliktCommand() {
     val forwardingSecret: String by option(help = "Forwarding secret", envvar = "FORWARDING_SECRET_KEY")
         .defaultLazy { AuthFileSecretFactory.loadOrCreate(forwardingSecretPath) }
 
-    override fun run() {
+    val trackMetrics: Boolean by option(help = "Track metrics", envvar = "TRACK_METRICS")
+        .boolean()
+        .default(true)
+
+    override suspend fun run() {
+        if (trackMetrics) {
+            metricsCollector?.start()
+        }
+
         val serverHostRuntime = ServerHostRuntime(this)
         serverHostRuntime.start()
     }

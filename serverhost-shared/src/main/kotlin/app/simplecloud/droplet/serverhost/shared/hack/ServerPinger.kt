@@ -2,19 +2,96 @@ package app.simplecloud.droplet.serverhost.shared.hack
 
 import com.google.gson.*
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.*
 import java.lang.reflect.Type
-import java.net.InetSocketAddress
-import java.net.Socket
-import java.util.concurrent.CompletableFuture
+import java.net.*
 
 object ServerPinger {
     private val gson: Gson = GsonBuilder()
         .registerTypeAdapter(Description::class.java, Description.Deserializer())
         .create()
 
+    // Constants for Bedrock edition
+    private const val MAGIC = "00ffff00fefefefefdfdfdfd12345678"
+    private const val UNCONNECTED_PING: Byte = 0x01
+    private const val UNCONNECTED_PONG: Byte = 0x1C
+
+    enum class ServerType {
+        JAVA, BEDROCK
+    }
+
+    data class StatusResponse(
+        val description: Description,
+        val players: Players,
+        val version: Version?,
+        val favicon: String?,
+        val time: Int?,
+        val serverType: ServerType
+    )
+
+    data class Players(
+        val max: Int,
+        val online: Int,
+        val sample: List<Player> = emptyList()
+    )
+
+    data class Player(
+        val name: String,
+        val id: String
+    )
+
+    data class Version(
+        val name: String?,
+        val protocol: Int?
+    )
+
+    data class Description(
+        var text: String
+    ) {
+        class Deserializer : JsonDeserializer<Description> {
+            override fun deserialize(
+                json: JsonElement,
+                typeOfT: Type,
+                context: JsonDeserializationContext
+            ): Description {
+                return if (json.isJsonObject) {
+                    Description(json.asJsonObject["text"].asString)
+                } else {
+                    Description(json.asString)
+                }
+            }
+        }
+    }
+
     suspend fun ping(address: InetSocketAddress): StatusResponse {
         return coroutineScope {
+            // Try Java first
+            try {
+                val javaResponse = pingJava(address)
+                if (javaResponse != null) {
+                    return@coroutineScope javaResponse.copy(serverType = ServerType.JAVA)
+                }
+            } catch (_: Exception) {
+                // Ignore and try Bedrock
+            }
+
+            // Try Bedrock if Java failed
+            try {
+                val bedrockResponse = pingBedrock(address)
+                if (bedrockResponse != null) {
+                    return@coroutineScope bedrockResponse
+                }
+            } catch (_: Exception) {
+                // Ignore
+            }
+
+            throw IOException("Failed to ping server (both Java and Bedrock attempts failed)")
+        }
+    }
+
+    private suspend fun pingJava(address: InetSocketAddress): StatusResponse? {
+        return withTimeoutOrNull(3000) {
             Socket().use { socket ->
                 socket.setSoTimeout(3000)
                 socket.connect(address, 3000)
@@ -23,26 +100,24 @@ object ServerPinger {
                     DataOutputStream(outputStream).use { dataOutputStream ->
                         socket.getInputStream().use { inputStream ->
                             DataInputStream(inputStream).use { dataInputStream ->
-
                                 val handshake = ByteArrayOutputStream()
                                 DataOutputStream(handshake).use { hs ->
-                                    hs.writeByte(0x00) // packet id for handshake
-                                    writeVarInt(hs, 4) // protocol version
-                                    writeVarInt(hs, address.hostString.length) // host length
-                                    hs.writeBytes(address.hostString) // host string
-                                    hs.writeShort(address.port) // port
-                                    writeVarInt(hs, 1) // state (1 for handshake)
+                                    hs.writeByte(0x00)
+                                    writeVarInt(hs, 4)
+                                    writeVarInt(hs, address.hostString.length)
+                                    hs.writeBytes(address.hostString)
+                                    hs.writeShort(address.port)
+                                    writeVarInt(hs, 1)
 
-                                    writeVarInt(dataOutputStream, handshake.size()) // prepend size
-                                    dataOutputStream.write(handshake.toByteArray()) // write handshake packet
+                                    writeVarInt(dataOutputStream, handshake.size())
+                                    dataOutputStream.write(handshake.toByteArray())
                                 }
 
-                                // Ping packet
-                                dataOutputStream.writeByte(0x01) // size is only 1
-                                dataOutputStream.writeByte(0x00) // packet id for ping
+                                dataOutputStream.writeByte(0x01)
+                                dataOutputStream.writeByte(0x00)
 
                                 val json = fetchJson(dataInputStream)
-                                return@coroutineScope parseJsonResponse(json)
+                                return@withTimeoutOrNull parseJsonResponse(json)
                             }
                         }
                     }
@@ -51,9 +126,72 @@ object ServerPinger {
         }
     }
 
+    private suspend fun pingBedrock(address: InetSocketAddress): StatusResponse? {
+        return withTimeoutOrNull(3000) {
+            DatagramSocket().use { socket ->
+                socket.soTimeout = 3000
+
+                val pingPacket = createBedrockPingPacket()
+                socket.send(DatagramPacket(pingPacket, pingPacket.size, address))
+
+                val buffer = ByteArray(1024)
+                val response = DatagramPacket(buffer, buffer.size)
+                socket.receive(response)
+
+                return@withTimeoutOrNull parseBedrockResponse(response.data.copyOfRange(0, response.length))
+            }
+        }
+    }
+
+    private fun createBedrockPingPacket(): ByteArray {
+        val out = ByteArrayOutputStream()
+        DataOutputStream(out).use { dos ->
+            dos.writeByte(UNCONNECTED_PING.toInt())
+            dos.writeLong(System.currentTimeMillis())
+            dos.write(MAGIC.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+            dos.writeLong(2)
+        }
+        return out.toByteArray()
+    }
+
+    private fun parseBedrockResponse(data: ByteArray): StatusResponse {
+        val input = DataInputStream(ByteArrayInputStream(data))
+
+        val packetId = input.read()
+        if (packetId != UNCONNECTED_PONG.toInt()) {
+            throw IOException("Invalid Bedrock response packet ID")
+        }
+
+        val timestamp = input.readLong()
+        val serverGuid = input.readLong()
+        input.skip(16)
+
+        val serverInfo = ByteArray(input.available()).also { input.read(it) }.toString(Charsets.UTF_8)
+        val parts = serverInfo.split(";")
+
+        if (parts.size < 6) {
+            throw IOException("Invalid Bedrock server info format")
+        }
+
+        return StatusResponse(
+            description = Description("${parts[1]} [Bedrock]"), // MOTD
+            players = Players(
+                max = parts[5].toIntOrNull() ?: 0,
+                online = parts[4].toIntOrNull() ?: 0
+            ),
+            version = Version(
+                name = "${parts[0]} ${parts[3]}", // Edition + Version
+                protocol = parts[2].toIntOrNull()
+            ),
+            favicon = null,
+            time = null,
+            serverType = ServerType.BEDROCK
+        )
+    }
+
     private fun fetchJson(dataInputStream: DataInputStream): String {
-        val size = readVarInt(dataInputStream) // Size of packet
-        val id = readVarInt(dataInputStream) // Packet ID
+        val size = readVarInt(dataInputStream)
+        val id = readVarInt(dataInputStream)
         if (id != 0x00) throw IOException("Invalid packetID")
 
         val length = readVarInt(dataInputStream)
@@ -96,47 +234,5 @@ object ServerPinger {
             }
             out.writeByte(temp)
         } while (value != 0)
-    }
-
-    data class StatusResponse(
-        val description: Description,
-        val players: Players,
-        val version: Version?,
-        val favicon: String?,
-        val time: Int?
-    )
-
-    data class Players(
-        val max: Int,
-        val online: Int,
-        val sample: List<Player>
-    )
-
-    data class Player(
-        val name: String,
-        val id: String
-    )
-
-    data class Version(
-        val name: String?,
-        val protocol: Int?
-    )
-
-    data class Description(
-        var text: String
-    ) {
-        class Deserializer : JsonDeserializer<Description> {
-            override fun deserialize(
-                json: JsonElement,
-                typeOfT: Type,
-                context: JsonDeserializationContext
-            ): Description {
-                return if (json.isJsonObject) {
-                    Description(json.asJsonObject["text"].asString)
-                } else {
-                    Description(json.asString)
-                }
-            }
-        }
     }
 }
