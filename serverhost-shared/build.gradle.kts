@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api(libs.simplecloud.controller)
     api(libs.simplecloud.pubsub)
+    api(rootProject.libs.commons.io)
     api(project(":serverhost-configurator"))
     implementation(rootProject.libs.gson)
     implementation(rootProject.libs.bundles.log4j)

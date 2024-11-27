@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.shared.actions
+package app.simplecloud.droplet.serverhost.shared
 
 import java.nio.file.Path
 import java.nio.file.Paths

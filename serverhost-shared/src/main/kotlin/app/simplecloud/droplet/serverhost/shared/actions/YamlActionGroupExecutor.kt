@@ -1,11 +1,10 @@
 package app.simplecloud.droplet.serverhost.shared.actions
 
 // This class is able to execute actions parsed by the YamlActionLoader
-class YamlActionGroupExecutor(private val loadedActions: Map<String, List<Pair<YamlActionTypes, Any>>>) {
+class YamlActionGroupExecutor(private val context: YamlActionContext, private val loadedActions: Map<String, List<Pair<YamlActionTypes, Any>>>) {
     fun execute(ref: String): Boolean {
         val loadedActionGroup = loadedActions[ref] ?: return false
         try {
-            val context = YamlActionContext()
             for (actionData in loadedActionGroup) {
                 val type = actionData.first
                 exec(actionData.second, context, type.action)
