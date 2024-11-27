@@ -1,0 +1,27 @@
+copy:
+  - from: "%templates%/%group%"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"
+
+static-folder:
+  - key: "server-dir"
+    value: "%running%/static/%group%/%server%"
+    type: "placeholder"
+
+delete:
+  - file: "%server-dir%"
+    type: "delete"
+
+every:
+  - from: "%templates%/every"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"
+
+every_typed:
+  - ref: every
+  - from: "%templates%/every_%software%"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"

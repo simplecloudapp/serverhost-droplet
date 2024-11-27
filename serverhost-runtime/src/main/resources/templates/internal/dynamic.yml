@@ -1,0 +1,8 @@
+when:
+  start:
+    - cache/cache-pull
+    - util/every_typed
+    - util/copy
+  stop:
+    - cache/cache-paper
+    - util/delete
