@@ -1,0 +1,3 @@
+when:
+  start:
+    - paper/static-setup

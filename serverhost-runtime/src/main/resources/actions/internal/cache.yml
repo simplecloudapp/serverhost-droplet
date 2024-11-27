@@ -3,6 +3,11 @@ cache-pull:
     to: "%server%"
     type: "copy"
 
+cache-pull-paper:
+  - from: "%libs-dir%"
+    to: "%server-dir%/libraries"
+    type: "copy"
+
 cache-paper:
   - from: "%server-dir%/plugins/.paper-remapped/"
     to: "%templates%/cache/%group%/plugins/.paper-remapped"

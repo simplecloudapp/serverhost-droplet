@@ -1,17 +1,27 @@
+init-placeholders:
+  - key: "software"
+    field: "$.software"
+    type: "infer"
+  - key: "group"
+    field: "group"
+    type: "infer"
+  - key: "numerical-id"
+    field: "numericalId"
+    type: "infer"
+  - key: "server"
+    value: "%group%-%numerical-id%"
+    type: "placeholder"
+
 copy:
   - from: "%templates%/%group%"
     to: "%server-dir%"
     replace: false
     type: "copy"
 
-static-folder:
+static-dir:
   - key: "server-dir"
     value: "%running%/static/%group%/%server%"
     type: "placeholder"
-
-delete:
-  - file: "%server-dir%"
-    type: "delete"
 
 every:
   - from: "%templates%/every"
@@ -19,7 +29,7 @@ every:
     replace: false
     type: "copy"
 
-every_typed:
+every-typed:
   - ref: every
   - from: "%templates%/every_%software%"
     to: "%server-dir%"

@@ -1,0 +1,14 @@
+static-setup:
+  - ref: util/init-placeholders
+  - ref: util/static-dir
+  - ref: util/setup
+
+setup:
+  - ref: util/init-placeholders
+  - ref: cache/cache-pull
+  - ref: util/every-typed
+  - ref: util/copy
+
+delete:
+  - file: "%server-dir%"
+    type: "delete"
