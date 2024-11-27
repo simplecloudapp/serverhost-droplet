@@ -6,4 +6,5 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 data class CopyActionData(
     val from: String,
     val to: String,
+    val replace: Boolean = true,
 )

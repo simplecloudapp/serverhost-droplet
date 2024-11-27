@@ -19,8 +19,10 @@ object CopyAction : YamlAction<CopyActionData> {
             throw NullPointerException("from file does not exist")
         }
         val to = Paths.get(placeholders.parse(data.to))
-        println(to)
-        if (!to.parent.exists()) {
+        if(to.exists() && !data.replace) {
+            return
+        }
+        if (!to.exists()) {
             Files.createParentDirs(to.toFile())
             if(to.isDirectory())
                 to.toFile().mkdirs()
