@@ -1,4 +1,0 @@
-extends: "every_proxy"
-destinations:
-  - copy-from: "every_bungeecord"
-    copy-to: ""

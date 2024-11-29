@@ -5,15 +5,21 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
-import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
+import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
+import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import org.apache.logging.log4j.LogManager
+import java.nio.file.Path
+import kotlin.io.path.absolutePathString
 
 class ServerHostRuntime(
     private val serverHostStartCommand: ServerHostStartCommand
@@ -25,14 +31,19 @@ class ServerHostRuntime(
     private val serverHost =
         ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
     private val configurator = ConfiguratorExecutor()
-    private val templateCopier = TemplateCopier(serverHostStartCommand)
+    private val actionProvider =
+        ActionProvider(Path.of(serverHostStartCommand.templateDefinitionPath.absolutePathString(), "actions"))
+    private val templateProvider = TemplateProvider(
+        serverHostStartCommand,
+        actionProvider
+    )
     private val controllerChannel =
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
         .withCallCredentials(authCallCredentials)
     private val runner = ServerRunner(
         configurator,
-        templateCopier,
+        templateProvider,
         serverHost,
         serverHostStartCommand,
         controllerStub
@@ -46,7 +57,8 @@ class ServerHostRuntime(
         attach()
         resourceCopier.copyAll("copy")
         runner.startServerStateChecker()
-        templateCopier.loadTemplates()
+        actionProvider.load()
+        templateProvider.load()
 
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {

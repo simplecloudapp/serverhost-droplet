@@ -18,8 +18,8 @@ object LoadResults {
     private val GROUP_LOAD_RESULT_CACHE_SPIGOT = YamlActionGroup(
         "cache-spigot",
         listOf(
-            YamlActionData(YamlActionTypes.COPY, CopyActionData("%server%/libraries", "%template%/cache/%group%/libraries")),
-            YamlActionData(YamlActionTypes.COPY, CopyActionData("%server%/versions", "%template%/cache/%group%/versions"))
+            YamlActionData(YamlActionTypes.COPY, CopyActionData("%server-dir%/libraries", "%templates%/cache/%group%/libraries")),
+            YamlActionData(YamlActionTypes.COPY, CopyActionData("%server-dir%/versions", "%templates%/cache/%group%/versions"))
         ),
         emptyList(),
         mapOf(0 to Pair(YamlActionDataDescriptor.DATA, 0), 1 to Pair(YamlActionDataDescriptor.DATA, 1))
@@ -45,7 +45,7 @@ object LoadResults {
                     listOf(
                         YamlActionData(
                             YamlActionTypes.COPY,
-                            CopyActionData("%template%/cache/%group%", "%server%")
+                            CopyActionData("%templates%/cache/%group%", "%server-dir%")
                         )
                     ),
                     emptyList(),
@@ -57,8 +57,8 @@ object LoadResults {
                         YamlActionData(
                             YamlActionTypes.COPY,
                             CopyActionData(
-                                "%server%/plugins/.paper-remapped/",
-                                "%template%/cache/%group%/plugins/.paper-remapped"
+                                "%server-dir%/plugins/.paper-remapped/",
+                                "%templates%/cache/%group%/plugins/.paper-remapped"
                             )
                         )
                     ),

@@ -45,12 +45,14 @@ object YamlActionLoader {
                         )
                     )
 
-                    YamlActionDataDescriptor.REF -> actions.addAll(
-                        result.getOrDefault(
-                            group.actionRefList[flowEntry.value.second],
-                            listOf()
+                    YamlActionDataDescriptor.REF ->
+                        actions.addAll(
+                            result.getOrDefault(
+                                group.actionRefList[flowEntry.value.second],
+                                listOf()
+                            )
                         )
-                    )
+
                 }
             }
             result[ref] = actions
@@ -108,6 +110,9 @@ object YamlActionLoader {
         if (!directory.isDirectory()) throw IllegalArgumentException("Not a directory: $directory")
         for (entry in directory.listDirectoryEntries("*.yml")) {
             consumer.accept(entry)
+        }
+        for (entry in directory.toFile().listFiles { it -> it.isDirectory }!!) {
+            walkActionFiles(entry.toPath(), consumer)
         }
     }
 

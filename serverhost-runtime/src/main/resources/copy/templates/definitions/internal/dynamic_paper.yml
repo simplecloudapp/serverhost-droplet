@@ -2,4 +2,4 @@ when:
   start:
     - paper/setup
   stop:
-    - paper/stop
+    - paper/delete

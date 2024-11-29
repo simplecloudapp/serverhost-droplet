@@ -1,6 +1,7 @@
 init-placeholders:
   - key: "software"
-    field: "$.software"
+    field: "$.server-software"
+    lowercase: true
     type: "infer"
   - key: "group"
     field: "group"

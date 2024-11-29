@@ -1,6 +1,6 @@
 cache-pull:
-  - from: "%template%/cache/%group%"
-    to: "%server%"
+  - from: "%templates%/cache/%group%"
+    to: "%server-dir%"
     type: "copy"
 
 cache-pull-paper:

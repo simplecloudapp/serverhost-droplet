@@ -6,4 +6,5 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 data class InferFromServerActionData(
     val field: String,
     val key: String,
+    val lowercase: Boolean = false,
 )

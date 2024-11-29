@@ -1,6 +1,6 @@
 package app.simplecloud.droplet.serverhost.shared.actions.impl
 
-import app.simplecloud.droplet.serverhost.shared.YamlActionPlaceholderContext
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import org.apache.commons.io.FileUtils

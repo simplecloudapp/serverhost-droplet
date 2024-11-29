@@ -5,5 +5,5 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 @ConfigSerializable
 data class DeleteActionData(
     val path: String,
-    val force: Boolean = false
+    val force: Boolean = true
 )

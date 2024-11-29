@@ -9,6 +9,7 @@ dependencies {
     api(project(":serverhost-configurator"))
     implementation(rootProject.libs.gson)
     implementation(rootProject.libs.bundles.log4j)
+    implementation(rootProject.libs.kotlin.reflect)
     testImplementation(rootProject.libs.kotlin.test)
 }
 

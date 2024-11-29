@@ -9,11 +9,17 @@ class YamlTemplateExecutor(
     private val loadedActions: Map<String, List<Pair<YamlActionTypes, Any>>>
 ) {
 
-    fun execute(template: YamlTemplate, on: YamlActionTriggerTypes, context: YamlActionContext = YamlActionContext()) {
+    fun execute(template: YamlTemplate, on: YamlActionTriggerTypes, context: YamlActionContext = YamlActionContext()): List<Exception> {
         val groupExecutor = YamlActionGroupExecutor(context, loadedActions)
         val toExecute = template.actionMap.getOrDefault(on, listOf())
+        val errors = mutableListOf<Exception>()
         toExecute.forEach { action ->
-            groupExecutor.execute(action)
+            try {
+                errors.addAll(groupExecutor.execute(action))
+            }catch (e: Exception) {
+                errors.add(e)
+            }
         }
+        return errors
     }
 }

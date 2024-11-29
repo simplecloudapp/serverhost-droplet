@@ -49,6 +49,7 @@ class YamlActionGroupSerializer(
                 refTree[selfRef] = combinedRefs
                 flowList[flowIndex] = Pair(YamlActionDataDescriptor.REF, refIndex)
                 refIndex++
+                flowIndex++
                 return@forEach
             }
             if (child.hasChild("type")) {
@@ -57,7 +58,7 @@ class YamlActionGroupSerializer(
                 flowList[flowIndex] = Pair(YamlActionDataDescriptor.DATA, dataIndex)
                 dataIndex++
             }
-            flowIndex++;
+            flowIndex++
         }
 
         return YamlActionGroup(currentGroup.name, dataList, refList, flowList)

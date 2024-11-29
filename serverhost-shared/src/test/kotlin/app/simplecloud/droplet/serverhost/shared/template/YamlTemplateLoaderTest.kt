@@ -4,14 +4,13 @@ import app.simplecloud.droplet.serverhost.shared.ResourcePath
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionLoader
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.fail
 import kotlin.test.assertEquals
 import kotlin.test.fail
 
 class YamlTemplateLoaderTest {
 
-    private val templateDir = ResourcePath.get("templates")
-    private val actionDir = ResourcePath.get("actions")
+    private val templateDir = ResourcePath.get("assert/templates")
+    private val actionDir = ResourcePath.get("assert/actions")
 
     @Test
     fun load() {

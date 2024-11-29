@@ -7,5 +7,6 @@ static-setup:
   - ref: cache/cache-pull-paper
 
 delete:
+  - ref: util/init-placeholders
   - ref: cache/cache-paper
   - ref: default/delete

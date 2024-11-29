@@ -22,6 +22,8 @@ object YamlTemplateLoader {
         if (file.isDirectory()) {
             val result = mutableListOf<YamlTemplate>()
             val errors = mutableListOf<Exception>()
+            file.toFile().listFiles { it -> it.isDirectory }?.map { load(it.toPath(), actions) }
+                ?.forEach { template -> result.addAll(template.first); errors.addAll(template.second) }
             file.listDirectoryEntries("*.yml").map { entry ->
                 load(entry, actions)
             }.forEach { template -> result.addAll(template.first); errors.addAll(template.second) }
@@ -42,7 +44,6 @@ object YamlTemplateLoader {
         val name = file.nameWithoutExtension
         val actionMap = node.node("when").get(YamlTemplateActionsMap::class.java)
             ?: InferredYamlTemplateActionsMap(mapOf())
-
         val errors = actionMap.values.flatMap {
             it.filter { groupId -> !actions.containsKey(groupId) }
                 .map { groupId -> NullPointerException("Failed to parse $name: $groupId does not exist") }

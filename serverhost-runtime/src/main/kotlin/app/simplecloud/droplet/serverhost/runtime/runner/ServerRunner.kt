@@ -8,8 +8,8 @@ import app.simplecloud.droplet.serverhost.runtime.hack.JarMainClass
 import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.template.TemplateActionType
-import app.simplecloud.droplet.serverhost.runtime.template.TemplateCopier
+import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
@@ -32,10 +32,11 @@ import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
+import kotlin.math.log
 
 class ServerRunner(
     private val configurator: ConfiguratorExecutor,
-    private val templateCopier: TemplateCopier,
+    private val templateProvider: TemplateProvider,
     private val serverHost: ServerHost,
     private val args: ServerHostStartCommand,
     private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
@@ -179,8 +180,7 @@ class ServerRunner(
         if (!builder.directory().exists()) {
             builder.directory().mkdirs()
         }
-        templateCopier.copy(server, this, TemplateActionType.DEFAULT)
-        templateCopier.copy(server, this, TemplateActionType.RANDOM)
+        executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
         val configuratorSuccess = configurator.configurate(
             ServerConfigurable(server),
             usedConfigurator,
@@ -198,17 +198,24 @@ class ServerRunner(
         return true
     }
 
+    private fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes) {
+        val template = templateProvider.getLoadedTemplate(server.properties["template-id"] ?: "")
+        if(template != null) {
+            templateProvider.execute(server, dir, template, on)
+        } else {
+            if(!server.properties.containsKey("template-id"))
+                logger.error("Group ${server.group} has no template defined!")
+            else
+                logger.error("Template ${server.properties["template-id"] ?: ""} of group ${server.group} was not found!")
+        }
+    }
+
     suspend fun stopServer(server: Server): Boolean {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false
         copyTemplateMutex.withLock {
-            templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
-        }
-        try {
-            FileUtils.deleteDirectory(getServerDir(server))
-        } catch (e: IOException) {
-            logger.warn("Could not delete all files: ${e.localizedMessage}")
+            executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
         }
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
         PortProcessHandle.removePreBind(server.port.toInt(), true)
@@ -254,7 +261,7 @@ class ServerRunner(
             ?.let { getRealProcessParent(server, it).orElse(null) }
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
-            templateCopier.copy(server, this, TemplateActionType.SHUTDOWN)
+            executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
             FileUtils.deleteDirectory(getServerDir(server))
             PortProcessHandle.removePreBind(server.port.toInt(), true)
             return false

@@ -7,7 +7,7 @@ import kotlin.test.fail
 
 class YamlActionLoaderTest {
 
-    private val directory = ResourcePath.get("actions")
+    private val directory = ResourcePath.get("assert/actions")
 
     @Test
     fun testFileDeserialize() {

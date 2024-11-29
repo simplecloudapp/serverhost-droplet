@@ -1,6 +1,5 @@
-package app.simplecloud.droplet.serverhost.shared
+package app.simplecloud.droplet.serverhost.shared.actions
 
-import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import java.nio.file.Path
 
 data class YamlActionPlaceholderContext(val placeholders: MutableMap<String, String> = mutableMapOf()) {
@@ -17,16 +16,20 @@ data class YamlActionPlaceholderContext(val placeholders: MutableMap<String, Str
         placeholders[key] = path.toAbsolutePath().toString()
     }
 
-    fun setServerPath(path: Path) {
-        set("server", path)
+    fun setRunning(path: Path) {
+        set("running", path)
+    }
+
+    fun setServerDir(path: Path) {
+        set("server-dir", path)
     }
 
     fun setTemplate(path: Path) {
-        set("template", path)
+        set("templates", path)
     }
 
     fun setLibs(path: Path) {
-        set("libs", path)
+        set("libs-dir", path)
     }
 
     fun setGroup(group: String) {

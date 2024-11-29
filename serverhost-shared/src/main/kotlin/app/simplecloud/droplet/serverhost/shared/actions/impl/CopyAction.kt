@@ -1,13 +1,17 @@
 package app.simplecloud.droplet.serverhost.shared.actions.impl
 
-import app.simplecloud.droplet.serverhost.shared.YamlActionPlaceholderContext
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import com.google.common.io.Files
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.file.FilesUncheck
+import java.io.File
+import java.nio.file.CopyOption
+import java.nio.file.FileSystems
 import java.nio.file.Paths
-import kotlin.io.path.exists
-import kotlin.io.path.isDirectory
+import java.nio.file.StandardCopyOption
+import kotlin.io.path.*
 
 object CopyAction : YamlAction<CopyActionData> {
 
@@ -16,23 +20,30 @@ object CopyAction : YamlAction<CopyActionData> {
             ?: throw NullPointerException("placeholder context is required but was not found")
         val from = Paths.get(placeholders.parse(data.from))
         if (!from.exists()) {
-            throw NullPointerException("from file does not exist")
+            throw NullPointerException("from file does not exist ($from)")
         }
         val to = Paths.get(placeholders.parse(data.to))
-        if(to.exists() && !data.replace) {
+        if(to.exists() && !to.isDirectory() && !data.replace) {
             return
         }
         if (!to.exists()) {
             Files.createParentDirs(to.toFile())
-            if(to.isDirectory())
+            if(to.isDirectory() || to.name == to.nameWithoutExtension)
                 to.toFile().mkdirs()
         }
         if (from.isDirectory()) {
-            FileUtils.copyDirectory(from.toFile(), to.toFile())
+            if(!data.replace)
+                FileUtils.copyDirectory(from.toFile(), to.toFile()) { f ->
+                    !from.resolve(to.relativize(f.toPath())).exists()
+                }
+            else
+                FileUtils.copyDirectory(from.toFile(), to.toFile())
             return
         }
-        FileUtils.copyFile(from.toFile(), to.toFile())
-
+        if(to.isDirectory() || to.name == to.nameWithoutExtension)
+            FileUtils.copyToDirectory(from.toFile(), to.toFile())
+        else
+            FileUtils.copyFile(from.toFile(), to.toFile(), StandardCopyOption.REPLACE_EXISTING)
     }
 
     override fun getDataType(): Class<CopyActionData> {
