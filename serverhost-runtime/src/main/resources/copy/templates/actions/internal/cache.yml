@@ -2,19 +2,23 @@ cache-pull:
   - from: "%templates%/cache/%group%"
     to: "%server-dir%"
     type: "copy"
+  - ref: cache-pull-libs
 
-cache-pull-paper:
+cache-pull-libs:
   - from: "%libs-dir%"
     to: "%server-dir%/libraries"
     type: "copy"
 
-cache-paper:
+cache-push:
+  - ref: cache-push-paper
+  - ref: cache-push-spigot
+
+cache-push-paper:
   - from: "%server-dir%/plugins/.paper-remapped/"
     to: "%templates%/cache/%group%/plugins/.paper-remapped"
     type: "copy"
-  - ref: cache-spigot
 
-cache-spigot:
+cache-push-spigot:
   - from: "%server-dir%/libraries"
     to: "%templates%/cache/%group%/libraries"
     type: "copy"

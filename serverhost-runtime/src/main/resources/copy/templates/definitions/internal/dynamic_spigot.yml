@@ -1,5 +1,0 @@
-when:
-  start:
-    - default/setup
-  stop:
-    - spigot/delete

@@ -16,7 +16,11 @@ class ActionProvider(private val dir: Path) {
             logger.error("Action directory is not a directory")
             return
         }
-        actions = YamlActionLoader.load(dir)
+        try {
+            actions = YamlActionLoader.load(dir)
+        }catch (e: Exception) {
+            logger.error(e.message)
+        }
         logger.info("Loaded ${actions.size} actions")
     }
 

@@ -11,5 +11,6 @@ setup:
 
 delete:
   - ref: util/init-placeholders
+  - ref: cache/cache-push
   - path: "%server-dir%"
     type: "delete"

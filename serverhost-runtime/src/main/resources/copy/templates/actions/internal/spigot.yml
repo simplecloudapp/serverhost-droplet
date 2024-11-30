@@ -1,3 +1,0 @@
-delete:
-  - ref: cache/cache-spigot
-  - ref: default/delete
