@@ -6,7 +6,7 @@ static-setup:
 setup:
   - ref: util/init-placeholders
   - ref: cache/cache-pull
-  - ref: util/every-typed
+  - ref: util/every-with-software
   - ref: util/copy
 
 delete:

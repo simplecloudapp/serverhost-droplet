@@ -3,6 +3,10 @@ init-placeholders:
     field: "$.server-software"
     lowercase: true
     type: "infer"
+  - key: "type"
+    field: "type"
+    lowercase: true
+    type: "infer"
   - key: "group"
     field: "group"
     type: "infer"
@@ -30,8 +34,15 @@ every:
     replace: false
     type: "copy"
 
-every-typed:
+every-with-type:
   - ref: every
+  - from: "%templates%/every_%type%"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"
+
+every-with-software:
+  - ref: every-with-type
   - from: "%templates%/every_%software%"
     to: "%server-dir%"
     replace: false
