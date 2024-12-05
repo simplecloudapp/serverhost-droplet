@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.hack
+package app.simplecloud.droplet.serverhost.runtime.util
 
 import java.nio.file.Path
 import java.util.jar.JarFile

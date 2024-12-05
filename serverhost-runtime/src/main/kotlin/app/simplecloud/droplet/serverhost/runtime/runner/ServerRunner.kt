@@ -4,13 +4,13 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurable
-import app.simplecloud.droplet.serverhost.runtime.hack.JarMainClass
-import app.simplecloud.droplet.serverhost.runtime.hack.ProcessDirectory
+import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
+import app.simplecloud.droplet.serverhost.runtime.util.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
+import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
-import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
@@ -25,14 +25,12 @@ import kotlinx.coroutines.sync.withLock
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
-import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
-import kotlin.math.log
 
 class ServerRunner(
     private val configurator: ConfiguratorExecutor,
@@ -56,8 +54,6 @@ class ServerRunner(
     private val defaultArguments = listOf("nogui")
     private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
     private val screenExecutable: String = "screen"
-    private val screenOptions =
-        mutableListOf("-L", "-Logfile", "%LOG_FILE%", "-dmS", "%SCREEN_NAME%", defaultExecutable, *defaultOptions.toTypedArray())
 
     private val stopTries = mutableMapOf<String, Int>()
     private val maxGracefulTries = 3
@@ -295,8 +291,7 @@ class ServerRunner(
     }
 
     private fun buildProcess(server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
-        val os = OS.get()
-        val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments(os)
+        val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments()
         //TODO exist check before save
         GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
         val command = mutableListOf<String>()
@@ -342,15 +337,39 @@ class ServerRunner(
         builder.environment().putAll(server.toEnv())
         if(jvmArgs.executable?.lowercase() != "screen")
             builder.redirectOutput(getServerLogFile(server).toFile())
+
+        println("Command line:\n${builder.command().joinToString(" ")}")
         return builder
     }
 
-    private fun crateDefaultJvmArguments(os: OS?): JvmArguments {
-        return JvmArguments(
-            if (os == OS.UNIX) screenExecutable else defaultExecutable,
-            if (os == OS.UNIX) screenOptions else defaultOptions,
-            defaultArguments
-        )
+    private fun crateDefaultJvmArguments(): JvmArguments {
+        val useScreen = ScreenCapabilities.isScreenAvailable()
+        val capabilities = if (useScreen) ScreenCapabilities.getScreenCapabilities() else ScreenCapabilities()
+
+        return when {
+            useScreen -> {
+                val screenOpts = mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable)
+
+                if (capabilities.hasLogging && capabilities.hasLogFile) {
+                    screenOpts.addAll(0, listOf("-L", "-Logfile", "%LOG_FILE%"))
+                } else if (capabilities.hasLogging) {
+                    screenOpts.add(0, "-L")
+                }
+
+                JvmArguments(
+                    screenExecutable,
+                    screenOpts + defaultOptions,
+                    defaultArguments
+                )
+            }
+            else -> {
+                JvmArguments(
+                    defaultExecutable,
+                    defaultOptions,
+                    defaultArguments
+                )
+            }
+        }
     }
 
 
