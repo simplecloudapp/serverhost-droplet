@@ -38,6 +38,9 @@ data class YamlActionPlaceholderContext(val placeholders: MutableMap<String, Str
 
     fun save(context: YamlActionContext) {
         context.store("placeholders", placeholders)
+        if(placeholders.containsKey("server-dir")) {
+            context.store("server-dir", placeholders["server-dir"]!!)
+        }
     }
 
     fun parse(templated: String): String {
@@ -52,6 +55,9 @@ data class YamlActionPlaceholderContext(val placeholders: MutableMap<String, Str
     companion object {
         fun retrieve(context: YamlActionContext): YamlActionPlaceholderContext? {
             val map = context.retrieve<MutableMap<String, String>>("placeholders") ?: return null
+            val serverDir = context.retrieve<String>("server-dir")
+            if(serverDir != null)
+                map["server-dir"] = serverDir
             return YamlActionPlaceholderContext(map)
         }
     }

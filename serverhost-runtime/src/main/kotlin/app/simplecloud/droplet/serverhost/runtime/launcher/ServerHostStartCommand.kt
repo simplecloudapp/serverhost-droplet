@@ -1,6 +1,6 @@
 package app.simplecloud.droplet.serverhost.runtime.launcher
 
-import app.simplecloud.controller.shared.secret.AuthFileSecretFactory
+import app.simplecloud.droplet.api.secret.AuthFileSecretFactory
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.metrics.internal.api.MetricsCollector
 import com.github.ajalt.clikt.command.SuspendingCliktCommand

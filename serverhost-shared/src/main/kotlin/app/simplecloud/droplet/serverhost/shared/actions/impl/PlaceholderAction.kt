@@ -8,6 +8,10 @@ object PlaceholderAction: YamlAction<PlaceHolderActionData> {
     override fun exec(ctx: YamlActionContext, data: PlaceHolderActionData) {
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx)
             ?: throw NullPointerException("placeholder context is required but was not found")
+        if(data.key == "server-dir") {
+            ctx.store("server-dir", data.value)
+            return
+        }
         placeholders.set(data.key, placeholders.parse(data.value))
         placeholders.save(ctx)
     }

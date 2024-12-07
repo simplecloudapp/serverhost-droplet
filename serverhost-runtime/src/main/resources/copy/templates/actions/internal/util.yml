@@ -3,6 +3,9 @@ init-placeholders:
     field: "$.server-software"
     lowercase: true
     type: "infer"
+  - key: "configurator"
+    field: "$.configurator"
+    type: "infer"
   - key: "type"
     field: "type"
     lowercase: true
@@ -22,6 +25,11 @@ copy:
     to: "%server-dir%"
     replace: false
     type: "copy"
+
+configurate:
+  - configurator: "%configurator%"
+    dir: "%server-dir%"
+    type: "configurate"
 
 static-dir:
   - key: "server-dir"

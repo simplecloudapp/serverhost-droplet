@@ -39,18 +39,23 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         return templates.find { it.name == name }
     }
 
-    fun execute(server: Server, serverDir: Path, template: YamlTemplate, on: YamlActionTriggerTypes) {
+    /**
+     * @return the [YamlActionContext] for extended usage in internal functionality
+     */
+    fun execute(server: Server, serverDir: Path, template: YamlTemplate, on: YamlActionTriggerTypes): YamlActionContext {
         val executor = YamlTemplateExecutor(actionProvider.getLoadedActions())
         val ctx = YamlActionContext()
         val placeholders = YamlActionPlaceholderContext()
         placeholders.setLibs(args.libsPath)
         placeholders.setTemplate(args.templatePath)
         placeholders.setRunning(args.runningServersPath)
+        placeholders.set("forwarding-secret", args.forwardingSecret)
         placeholders.setServerDir(serverDir)
         placeholders.save(ctx)
         ctx.store("server", server)
         executor.execute(template, on, ctx).forEach { exception ->
             logger.warn(exception.message ?: "Unknown error on template of group ${server.group}")
         }
+        return ctx
     }
 }

@@ -3,14 +3,17 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
-import app.simplecloud.droplet.serverhost.runtime.configurator.ServerConfigurable
-import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
-import app.simplecloud.droplet.serverhost.runtime.util.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
+import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
+import app.simplecloud.droplet.serverhost.runtime.util.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
+import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
+import app.simplecloud.droplet.serverhost.shared.configurator.ServerConfigurable
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
@@ -130,7 +133,7 @@ class ServerRunner(
         }
     }
 
-    fun getServerDir(server: Server): File {
+    private fun getServerDir(server: Server): File {
         return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
     }
 
@@ -165,28 +168,21 @@ class ServerRunner(
             return false
         }
 
-        val usedConfigurator = server.properties["configurator"]
-        if (usedConfigurator == null) {
+        if (server.properties["configurator"] == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group has no assigned configurator.")
             return false
         }
 
-        val builder = buildProcess(server, runtimeConfig)
+        val ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
+        var serverDir: File? = null
+        if(ctx != null) {
+            serverDir = getServerDir(ctx)
+        }
+
+        val builder = buildProcess(serverDir, server, runtimeConfig)
 
         if (!builder.directory().exists()) {
             builder.directory().mkdirs()
-        }
-        executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
-        val configuratorSuccess = configurator.configurate(
-            ServerConfigurable(server),
-            usedConfigurator,
-            getServerDir(server),
-            args.forwardingSecret
-        )
-        if (!configuratorSuccess) {
-            logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Failed to configure server.")
-            FileUtils.deleteDirectory(getServerDir(server))
-            return false
         }
         val process = builder.start()
         serverToProcessHandle[server] = process.toHandle()
@@ -194,16 +190,23 @@ class ServerRunner(
         return true
     }
 
-    private fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes) {
+    private fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes): YamlActionContext? {
         val template = templateProvider.getLoadedTemplate(server.properties["template-id"] ?: "")
         if(template != null) {
-            templateProvider.execute(server, dir, template, on)
+            return templateProvider.execute(server, dir, template, on)
         } else {
             if(!server.properties.containsKey("template-id"))
                 logger.error("Group ${server.group} has no template defined!")
             else
                 logger.error("Template ${server.properties["template-id"] ?: ""} of group ${server.group} was not found!")
         }
+        return null;
+    }
+
+    private fun getServerDir(ctx: YamlActionContext): File? {
+        val dir = ctx.retrieve<String>("server-dir") ?: return null
+        val placeholders = YamlActionPlaceholderContext.retrieve(ctx) ?: return null
+        return Paths.get(placeholders.parse(dir)).toFile()
     }
 
     suspend fun stopServer(server: Server): Boolean {
@@ -290,7 +293,7 @@ class ServerRunner(
         return runtimeConfig == null || runtimeConfig.ignore != true
     }
 
-    private fun buildProcess(server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
+    private fun buildProcess(serverDir: File?, server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
         val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments()
         //TODO exist check before save
         GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
@@ -326,7 +329,7 @@ class ServerRunner(
         }
         val builder = ProcessBuilder()
             .command(command)
-            .directory(getServerDir(server, runtimeConfig))
+            .directory(serverDir ?: getServerDir(server, runtimeConfig))
         builder.environment()["HOST_IP"] = serverHost.host
         builder.environment()["HOST_PORT"] = serverHost.port.toString()
         builder.environment()["CONTROLLER_HOST"] = this.args.grpcHost
@@ -336,9 +339,7 @@ class ServerRunner(
         builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
         if(jvmArgs.executable?.lowercase() != "screen")
-            builder.redirectOutput(getServerLogFile(server).toFile())
-
-        println("Command line:\n${builder.command().joinToString(" ")}")
+            builder.redirectOutput(logFile.toFile())
         return builder
     }
 

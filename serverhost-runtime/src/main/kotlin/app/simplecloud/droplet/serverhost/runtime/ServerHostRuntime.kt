@@ -1,7 +1,8 @@
 package app.simplecloud.droplet.serverhost.runtime
 
-import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.host.ServerHost
+import app.simplecloud.droplet.api.auth.AuthCallCredentials
+import app.simplecloud.droplet.api.auth.AuthSecretInterceptor
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
@@ -94,7 +95,7 @@ class ServerHostRuntime(
 
     private fun createGrpcServer(): Server {
         return ServerHostGrpc.createGrpcServerBuilder(serverHost, serverHostStartCommand.authSecret)
-            .addService(ServerHostService(serverHost, runner)).build()
+            .addService(ServerHostService(serverHost, runner)).intercept(AuthSecretInterceptor(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)).build()
     }
 
 }

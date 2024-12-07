@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.configurator
+package app.simplecloud.droplet.serverhost.shared.configurator
 
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.serverhost.configurator.Configurable
