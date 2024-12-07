@@ -94,7 +94,7 @@ class ServerHostRuntime(
     }
 
     private fun createGrpcServer(): Server {
-        return ServerHostGrpc.createGrpcServerBuilder(serverHost, serverHostStartCommand.authSecret)
+        return ServerHostGrpc.createGrpcServerBuilder(serverHost, serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
             .addService(ServerHostService(serverHost, runner)).intercept(AuthSecretInterceptor(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)).build()
     }
 

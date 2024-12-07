@@ -8,7 +8,7 @@ setup:
   - ref: cache/cache-pull
   - ref: util/every-with-software
   - ref: util/copy
-  - ref:
+  - ref: util/configurate
 
 delete:
   - ref: util/init-placeholders

@@ -1,6 +1,6 @@
 package app.simplecloud.droplet.serverhost.shared.logs
 
-import app.simplecloud.controller.shared.time.ProtoBufTimestamp
+import app.simplecloud.droplet.api.time.ProtobufTimestamp
 import build.buf.gen.simplecloud.controller.v1.ServerHostStreamServerLogsResponse
 import io.grpc.Context
 import kotlinx.coroutines.Dispatchers
@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
-import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
@@ -56,7 +55,7 @@ class LogStreamer(private val logFile: Path, private val logger: Logger) {
                             emit(
                                 ServerHostStreamServerLogsResponse.newBuilder()
                                     .setContent(line)
-                                    .setTimestamp(ProtoBufTimestamp.fromLocalDateTime(LocalDateTime.now()))
+                                    .setTimestamp(ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now()))
                                     .build()
                             )
                         }

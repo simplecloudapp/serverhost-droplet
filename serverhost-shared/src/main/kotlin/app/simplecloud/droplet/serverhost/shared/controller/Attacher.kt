@@ -1,6 +1,5 @@
 package app.simplecloud.droplet.serverhost.shared.controller
 
-import app.simplecloud.controller.shared.auth.AuthCallCredentials
 import app.simplecloud.controller.shared.host.ServerHost
 import build.buf.gen.simplecloud.controller.v1.AttachServerHostRequest
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
