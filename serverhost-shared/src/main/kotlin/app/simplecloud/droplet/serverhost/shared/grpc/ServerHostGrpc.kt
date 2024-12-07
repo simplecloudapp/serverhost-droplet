@@ -13,7 +13,6 @@ object ServerHostGrpc {
     }
 
     fun createGrpcServerBuilder(serverHost: ServerHost, host: String, port: Int): ServerBuilder<*> {
-        return ServerBuilder.forPort(serverHost.port)
-            .intercept(AuthSecretInterceptor(host, port))
+        return ServerBuilder.forPort(serverHost.port).intercept(AuthSecretInterceptor(host, port))
     }
 }
