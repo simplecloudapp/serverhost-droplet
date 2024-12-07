@@ -73,6 +73,11 @@ class ServerHostStartCommand(
     val authSecret: String by option(help = "Auth secret", envvar = "AUTH_SECRET_KEY")
         .defaultLazy { AuthFileSecretFactory.loadOrCreate(authSecretPath) }
 
+    val authorizationPort: Int by option(
+        help = "Authorization port (default: 5818)",
+        envvar = "AUTHORIZATION_PORT"
+    ).int().default(5818)
+
     private val forwardingSecretPath: Path by option(
         help = "Path to forwarding secret file (default: forwarding.secret)",
         envvar = "FORWARDING_SECRET_PATH"
