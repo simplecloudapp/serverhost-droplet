@@ -52,6 +52,7 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         placeholders.set("forwarding-secret", args.forwardingSecret)
         placeholders.setServerDir(serverDir)
         placeholders.save(ctx)
+        ctx.store("forwarding-secret", args.forwardingSecret)
         ctx.store("server", server)
         executor.execute(template, on, ctx).forEach { exception ->
             logger.warn(exception.message ?: "Unknown error on template of group ${server.group}")
