@@ -23,6 +23,7 @@ init-placeholders:
 copy:
   - from: "%templates%/%group%"
     to: "%server-dir%"
+    init-dir-if-missing: true
     replace: false
     type: "copy"
 

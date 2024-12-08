@@ -20,6 +20,11 @@ object CopyAction : YamlAction<CopyActionData> {
             ?: throw NullPointerException("placeholder context is required but was not found")
         val from = Paths.get(placeholders.parse(data.from))
         if (!from.exists()) {
+            if(data.initDirIfMissing) {
+                Files.createParentDirs(from.toFile())
+                from.toFile().mkdirs()
+                return
+            }
             throw NullPointerException("from file does not exist ($from)")
         }
         val to = Paths.get(placeholders.parse(data.to))
