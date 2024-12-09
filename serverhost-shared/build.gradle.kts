@@ -10,8 +10,6 @@ dependencies {
     implementation(rootProject.libs.gson)
     implementation(rootProject.libs.bundles.log4j)
     implementation(rootProject.libs.kotlin.reflect)
-    implementation("io.ktor:ktor-client-java:3.0.1")
-    implementation("io.ktor:ktor-client-okhttp-jvm:3.0.1")
     testImplementation(rootProject.libs.kotlin.test)
 }
 

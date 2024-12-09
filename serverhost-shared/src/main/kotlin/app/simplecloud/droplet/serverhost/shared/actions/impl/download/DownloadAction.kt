@@ -22,11 +22,11 @@ object DownloadAction : YamlAction<DownloadActionData> {
         val url = placeholders.parse(data.url)
         require(isValidUrl(url)) { "Invalid URL: $url" }
 
-        val destinationPath = Paths.get(placeholders.parse(data.destinationPath))
-        DownloadUtil.ensureDestinationPathExists(destinationPath, data.initMissingDirectories)
+        val destinationPath = Paths.get(placeholders.parse(data.path))
+        DownloadUtil.ensureDestinationPathExists(destinationPath, data.initDirIfMissing)
 
         val file = DownloadUtil.resolveFilePath(url, destinationPath)
-        if (file.exists() && !data.overwrite) {
+        if (file.exists() && !data.replace) {
             throw IllegalStateException("File already exists and overwrite is disabled: $file")
         }
 

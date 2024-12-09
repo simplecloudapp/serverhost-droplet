@@ -32,11 +32,11 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
                 val downloadUrl = retrievePluginDownloadUrl(modId, loader, gameVersion)
                 require(downloadUrl.isNotBlank()) { "Download URL is blank, please check your provided parameter" }
 
-                val destinationPath = Paths.get(placeholders.parse(data.destinationPath))
-                DownloadUtil.ensureDestinationPathExists(destinationPath, data.initMissingDirectories)
+                val destinationPath = Paths.get(placeholders.parse(data.path))
+                DownloadUtil.ensureDestinationPathExists(destinationPath, data.initDirIfMissing)
 
                 val destinationFile = DownloadUtil.resolveFilePath(downloadUrl, destinationPath)
-                if (destinationFile.exists() && !data.overwrite) {
+                if (destinationFile.exists() && !data.replace) {
                     throw IllegalStateException("File already exists and overwrite is disabled: $destinationFile")
                 }
 

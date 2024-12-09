@@ -7,8 +7,8 @@ data class ModrinthDownloadActionData(
     val modId: String,
     val gameVersion: String,
     val loader: String,
-    val destinationPath: String,
-    val overwrite: Boolean = true,
-    val initMissingDirectories: Boolean = true,
+    val path: String,
+    val replace: Boolean = true,
+    val initDirIfMissing: Boolean = true,
 ) {
 }

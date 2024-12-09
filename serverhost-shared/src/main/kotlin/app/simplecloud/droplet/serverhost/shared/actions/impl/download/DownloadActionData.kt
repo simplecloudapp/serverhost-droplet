@@ -5,9 +5,9 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 @ConfigSerializable
 data class DownloadActionData(
     val url: String,
-    val destinationPath: String,
-    val overwrite: Boolean = true,
-    val initMissingDirectories: Boolean = true
+    val path: String,
+    val replace: Boolean = true,
+    val initDirIfMissing: Boolean = true
 )
 
 
