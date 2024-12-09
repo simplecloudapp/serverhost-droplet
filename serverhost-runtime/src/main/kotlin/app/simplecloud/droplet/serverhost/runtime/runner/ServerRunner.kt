@@ -17,10 +17,7 @@ import app.simplecloud.droplet.serverhost.shared.configurator.ServerConfigurable
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
-import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
-import build.buf.gen.simplecloud.controller.v1.ServerState
-import build.buf.gen.simplecloud.controller.v1.UpdateServerRequest
-import build.buf.gen.simplecloud.controller.v1.copy
+import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.sync.Mutex
@@ -109,7 +106,11 @@ class ServerRunner(
             val ping = ServerPinger.ping(address)
             if (handle == null) return null
             PortProcessHandle.removePreBind(server.port.toInt())
-            val copiedServer = Server.fromDefinition(server.toDefinition().copy {
+            val controllerServer = controllerStub.getServerById(getServerByIdRequest {
+                this.serverId = server.uniqueId
+            })
+
+            val copiedServer = Server.fromDefinition(controllerServer.copy {
                 this.serverState =
                     if (ping.description.text == "INGAME")
                         ServerState.INGAME
