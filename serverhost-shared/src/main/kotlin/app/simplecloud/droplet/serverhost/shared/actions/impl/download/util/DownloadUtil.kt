@@ -13,10 +13,14 @@ import kotlin.io.path.isDirectory
 object DownloadUtil {
 
     fun ensureDestinationPathExists(path: Path, initDirIfMissing: Boolean) {
-        if (!path.exists() && initDirIfMissing) {
-            Files.createDirectories(path)
-        } else if (path.exists() && !path.isDirectory()) {
-            throw IllegalArgumentException("Destination path is not a directory: $path")
+        when {
+            path.exists() && !path.isDirectory() -> {
+                throw IllegalArgumentException("Destination path is not a directory: $path")
+            }
+
+            !path.exists() && initDirIfMissing -> {
+                Files.createDirectories(path)
+            }
         }
     }
 
