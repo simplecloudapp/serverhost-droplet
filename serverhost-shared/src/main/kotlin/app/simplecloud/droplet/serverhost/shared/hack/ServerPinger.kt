@@ -5,7 +5,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.*
 import java.lang.reflect.Type
-import java.net.*
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetSocketAddress
+import java.net.Socket
 
 object ServerPinger {
     private val gson: Gson = GsonBuilder()

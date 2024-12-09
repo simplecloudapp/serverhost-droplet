@@ -24,3 +24,6 @@ gradle-app.setting
 build
 
 run/
+
+*~
+.idea
