@@ -12,5 +12,5 @@ enum class YamlActionTypes(val action: YamlAction<*>) {
     INFER(InferFromServerAction),
     CONFIGURATE(ConfigurateAction),
     DOWNLOAD(DownloadAction),
-    MODRINTHDOWNLOAD(ModrinthDownloadAction);
+    MODRINTH_DOWNLOAD(ModrinthDownloadAction);
 }
