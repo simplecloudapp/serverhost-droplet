@@ -16,11 +16,14 @@ class YamlTemplateLoaderTest {
     fun load() {
         val actions = YamlActionLoader.load(actionDir)
         val templates = YamlTemplateLoader.load(templateDir, actions)
-        if(templates.first.size != 1) fail()
-        if(templates.second.size != 3) fail()
+        if (templates.first.size != 1) fail()
+        if (templates.second.size != 3) fail()
 
         val testTemplate = templates.first[0]
         assertEquals(testTemplate.name, "test")
-        assertEquals(testTemplate.actionMap.entries, InferredYamlTemplateActionsMap(mapOf(YamlActionTriggerTypes.START to listOf("cache/cache-pull"))).entries)
+        assertEquals(
+            testTemplate.actionMap.entries,
+            InferredYamlTemplateActionsMap(mapOf(YamlActionTriggerTypes.START to listOf("cache/cache-pull"))).entries
+        )
     }
 }
