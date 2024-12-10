@@ -25,6 +25,12 @@ object DownloadUtil {
     }
 
     fun resolveFilePath(url: String, destinationPath: Path): Path {
+        //provided Path is a File
+        if (Files.isRegularFile(destinationPath)) {
+            return destinationPath
+        }
+
+        //provided Path is a Directory
         val fileName = url.substringAfterLast("/")
         return destinationPath.resolve(fileName)
     }
