@@ -9,11 +9,9 @@ import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 import app.simplecloud.droplet.serverhost.runtime.util.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
-import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
-import app.simplecloud.droplet.serverhost.shared.configurator.ServerConfigurable
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
@@ -149,7 +147,10 @@ class ServerRunner(
     }
 
     fun getServerLogFile(server: Server): Path {
-        return Paths.get(args.logsPath.absolutePathString(), "${server.group}-${server.numericalId}-${server.uniqueId}.log")
+        return Paths.get(
+            args.logsPath.absolutePathString(),
+            "${server.group}-${server.numericalId}-${server.uniqueId}.log"
+        )
     }
 
     private fun isServerDir(server: Server, path: Path): Boolean {
@@ -176,7 +177,7 @@ class ServerRunner(
 
         val ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
         var serverDir: File? = null
-        if(ctx != null) {
+        if (ctx != null) {
             serverDir = getServerDir(ctx)
         }
 
@@ -193,10 +194,10 @@ class ServerRunner(
 
     private fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes): YamlActionContext? {
         val template = templateProvider.getLoadedTemplate(server.properties["template-id"] ?: "")
-        if(template != null) {
+        if (template != null) {
             return templateProvider.execute(server, dir, template, on)
         } else {
-            if(!server.properties.containsKey("template-id"))
+            if (!server.properties.containsKey("template-id"))
                 logger.error("Group ${server.group} has no template defined!")
             else
                 logger.error("Template ${server.properties["template-id"] ?: ""} of group ${server.group} was not found!")
@@ -249,7 +250,10 @@ class ServerRunner(
     }
 
     fun getProcess(uniqueId: String): ProcessHandle? {
-        return serverToProcessHandle.getOrDefault(serverToProcessHandle.keys.firstOrNull { it.uniqueId == uniqueId}, null)
+        return serverToProcessHandle.getOrDefault(
+            serverToProcessHandle.keys.firstOrNull { it.uniqueId == uniqueId },
+            null
+        )
     }
 
     fun reattachServer(server: Server): Boolean {
@@ -303,7 +307,7 @@ class ServerRunner(
         val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()
 
         val logFile = getServerLogFile(server)
-        if(!logFile.parent.exists()) {
+        if (!logFile.parent.exists()) {
             FileUtils.createParentDirectories(logFile.toFile())
         }
 
@@ -339,7 +343,7 @@ class ServerRunner(
         builder.environment()["CONTROLLER_PUBSUB_HOST"] = this.args.pubSubGrpcHost
         builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
-        if(jvmArgs.executable?.lowercase() != "screen")
+        if (jvmArgs.executable?.lowercase() != "screen")
             builder.redirectOutput(logFile.toFile())
         return builder
     }
@@ -364,6 +368,7 @@ class ServerRunner(
                     defaultArguments
                 )
             }
+
             else -> {
                 JvmArguments(
                     defaultExecutable,
