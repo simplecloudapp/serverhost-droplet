@@ -74,7 +74,8 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
     }
 
     private suspend fun retrievePluginDownloadUrl(modId: String, loader: String, gameVersion: String): String {
-        val url = "https://api.modrinth.com/v2/project/$modId/version?loaders=[$loader]&game_versions=[$gameVersion]"
+        val url =
+            "https://api.modrinth.com/v2/project/$modId/version?loaders=[%22$loader%22]&game_versions=[%22$gameVersion%22]"
         val response = fetchJson(url)
         val filesArray = response?.jsonArray?.firstOrNull()?.jsonObject?.get("files")?.jsonArray
         return filesArray?.firstOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.content ?: ""
