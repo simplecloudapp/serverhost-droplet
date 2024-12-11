@@ -381,7 +381,7 @@ class ServerRunner(
 
 
     fun startServerStateChecker(): Job {
-        return CoroutineScope(Dispatchers.Default).launch {
+        return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 serverToProcessHandle.keys.toList().forEach {
                     var delete = false

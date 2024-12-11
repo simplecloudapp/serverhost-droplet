@@ -73,7 +73,7 @@ class ServerHostRuntime(
     private fun startGrpcServer() {
         logger.info("Starting gRPC server...")
 
-        CoroutineScope(Dispatchers.Default).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 server.start()
                 server.awaitTermination()

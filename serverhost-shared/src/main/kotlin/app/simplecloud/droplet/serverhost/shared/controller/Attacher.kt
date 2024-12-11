@@ -27,7 +27,7 @@ class Attacher(
     }
 
     fun enforceAttach(): Job {
-        return CoroutineScope(Dispatchers.Default).launch {
+        return CoroutineScope(Dispatchers.IO).launch {
             var attached = attach()
             while (isActive) {
                 if (attached) {
