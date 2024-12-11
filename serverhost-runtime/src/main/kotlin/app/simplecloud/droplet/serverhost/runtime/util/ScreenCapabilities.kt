@@ -14,8 +14,8 @@ data class ScreenCapabilities(
                 val output = process.inputStream.bufferedReader().readText()
 
                 ScreenCapabilities(
-                    hasLogging = output.contains("-L") && output.contains("Turn on output logging"),
-                    hasLogFile = output.contains("-Logfile") && output.contains("set logfile name")
+                    hasLogging = output.contains("-L"),
+                    hasLogFile = output.contains("-Logfile")
                 )
             } catch (e: IOException) {
                 ScreenCapabilities()
