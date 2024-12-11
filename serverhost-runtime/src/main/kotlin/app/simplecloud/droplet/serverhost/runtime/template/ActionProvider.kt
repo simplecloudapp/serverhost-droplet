@@ -8,7 +8,7 @@ import kotlin.io.path.isDirectory
 
 class ActionProvider(private val dir: Path) {
 
-    private val logger = LogManager.getLogger(TemplateProvider::class.java)
+    private val logger = LogManager.getLogger(ActionProvider::class.java)
     private var actions = mapOf<String, List<Pair<YamlActionTypes, Any>>>()
 
     fun load() {
@@ -19,7 +19,7 @@ class ActionProvider(private val dir: Path) {
         try {
             actions = YamlActionLoader.load(dir)
         }catch (e: Exception) {
-            logger.error(e.message)
+            logger.error("action failed to load: ${e.cause?.javaClass?.name ?: "unknown"}: ${e.message}")
         }
         logger.info("Loaded ${actions.size} actions")
     }

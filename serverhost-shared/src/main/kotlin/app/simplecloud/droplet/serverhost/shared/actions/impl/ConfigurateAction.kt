@@ -31,7 +31,8 @@ object ConfigurateAction : YamlAction<ConfigurateActionData> {
                 ServerConfigurable(server),
                 usedConfigurator,
                 dest.toFile(),
-                forwardingSecret
+                forwardingSecret,
+                data.replace
             )
         ) throw Exception("Configurator $usedConfigurator failed.")
     }

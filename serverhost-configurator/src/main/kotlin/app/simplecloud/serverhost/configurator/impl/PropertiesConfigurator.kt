@@ -8,7 +8,7 @@ import java.io.FileReader
 import java.io.FileWriter
 import java.util.*
 
-object PropertiesConfigurator: Configurator<Properties> {
+object PropertiesConfigurator : Configurator<Properties> {
     override fun load(data: ConfigurationNode): Properties {
         val parsedData = data.childrenMap().map { it.key.toString() to it.value.get<Any>() }
         val properties = Properties()

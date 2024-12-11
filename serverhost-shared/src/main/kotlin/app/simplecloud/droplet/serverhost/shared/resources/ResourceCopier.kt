@@ -20,8 +20,9 @@ class ResourceCopier {
             it.walk(PathWalkOption.BREADTH_FIRST).forEach { child ->
                 val relative = File(child.relativeTo(path).pathString).toPath()
                 if (relative.parent == null || !relative.parent.exists())
-                    Files.createDirectories(relative)
-                Files.copy(child, relative)
+                    Files.createDirectories(relative.parent)
+                if(!relative.exists())
+                    Files.copy(child, relative)
             }
         }
         fileSystem?.close()

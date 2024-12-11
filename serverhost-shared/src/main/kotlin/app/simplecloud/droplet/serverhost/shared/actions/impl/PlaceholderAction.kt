@@ -12,7 +12,9 @@ object PlaceholderAction: YamlAction<PlaceHolderActionData> {
             ctx.store("server-dir", data.value)
             return
         }
-        placeholders.set(data.key, placeholders.parse(data.value))
+        var result = placeholders.parse(data.value)
+        if(data.lowercase) result = result.lowercase()
+        placeholders.set(data.key, result)
         placeholders.save(ctx)
     }
 

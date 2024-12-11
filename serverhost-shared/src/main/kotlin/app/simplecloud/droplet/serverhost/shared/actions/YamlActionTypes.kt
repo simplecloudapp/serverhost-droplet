@@ -1,6 +1,7 @@
 package app.simplecloud.droplet.serverhost.shared.actions
 
 import app.simplecloud.droplet.serverhost.shared.actions.impl.*
+import app.simplecloud.droplet.serverhost.shared.actions.impl.conditional.ConditionalAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.DownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.modrinth.ModrinthDownloadAction
 
@@ -12,5 +13,7 @@ enum class YamlActionTypes(val action: YamlAction<*>) {
     INFER(InferFromServerAction),
     CONFIGURATE(ConfigurateAction),
     DOWNLOAD(DownloadAction),
-    MODRINTH_DOWNLOAD(ModrinthDownloadAction);
+    MODRINTH_DOWNLOAD(ModrinthDownloadAction),
+    CONDITIONAL(ConditionalAction),
+    CREATE_DIR(CreateDirAction);
 }

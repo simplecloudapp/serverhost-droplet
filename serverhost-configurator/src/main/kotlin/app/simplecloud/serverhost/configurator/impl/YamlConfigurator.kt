@@ -2,6 +2,7 @@ package app.simplecloud.serverhost.configurator.impl
 
 import app.simplecloud.serverhost.configurator.Configurator
 import org.spongepowered.configurate.ConfigurationNode
+import org.spongepowered.configurate.yaml.NodeStyle
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
 
@@ -25,7 +26,7 @@ object YamlConfigurator : Configurator<ConfigurationNode> {
             saved = existing.copy()
             data.mergeFrom(saved)
         }
-        val loader = YamlConfigurationLoader.builder().file(file).build()
+        val loader = YamlConfigurationLoader.builder().nodeStyle(NodeStyle.BLOCK).file(file).build()
         loader.save(saved)
     }
 }

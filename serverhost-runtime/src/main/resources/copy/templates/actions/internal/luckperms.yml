@@ -1,7 +1,51 @@
-download:
+init-dirs:
+  - dir: "%templates%/config/luckperms"
+    type: "create_dir"
+  - dir: "%server-dir%/plugins"
+    type: "create_dir"
+
+download-luckperms:
   - mod-id: "Vebnzrzj"
     game-version: "%version%"
     loader: "%software%"
-    path: "%server-dir%/plugins/luckperms.jar"
+    path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+
+setup-plugin:
+  - ref: luckperms/init-dirs
+  - ref: luckperms/download-luckperms
+  - ref: luckperms/configurate-luckperms
+  - ref: luckperms/setup-plugin-folder
+  - from: "%templates%/config/luckperms"
+    to: "%luckperms-plugin-folder%"
+    replace: true
+    type: "copy"
+
+configurate-luckperms:
+  - configurator: "luckperms"
+    dir: "%templates%/config/luckperms"
+    replace: false
+    type: "configurate"
+
+setup-plugin-folder:
+  - key: "luckperms-plugin-folder"
+    value: "LuckPerms"
+    type: "placeholder"
+  - ref: luckperms/conditional-lowercase-plugin-folder
+  - key: "luckperms-plugin-folder"
+    value: "%server-dir%/plugins/%luckperms-plugin-folder%"
+    type: "placeholder"
+
+conditional-lowercase-plugin-folder:
+  - first: "%software%"
+    second: "velocity"
+    matcher: "equals"
+    executes: luckperms/lowercase-plugin-folder
+    type: "conditional"
+
+lowercase-plugin-folder:
+  - key: "luckperms-plugin-folder"
+    value: "%luckperms-plugin-folder%"
+    lowercase: true
+    type: "placeholder"

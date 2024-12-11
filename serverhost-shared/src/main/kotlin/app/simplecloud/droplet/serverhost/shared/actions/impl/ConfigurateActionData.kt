@@ -6,4 +6,5 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 data class ConfigurateActionData(
     val configurator: String,
     val dir: String,
+    val replace: Boolean = true,
 )
