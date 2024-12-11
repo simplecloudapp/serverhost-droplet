@@ -1,0 +1,7 @@
+download:
+  - mod-id: "Vebnzrzj"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins/luckperms.jar"
+    replace: false
+    type: "modrinth_download"

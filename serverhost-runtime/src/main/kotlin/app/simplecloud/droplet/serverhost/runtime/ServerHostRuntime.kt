@@ -55,7 +55,9 @@ class ServerHostRuntime(
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
         attach()
-        resourceCopier.copyAll("copy")
+        resourceCopier.copyAll("copy") { path ->
+            return@copyAll !path.startsWith(Path.of("templates", "definitions"))
+        }
         runner.startServerStateChecker()
         actionProvider.load()
         templateProvider.load()

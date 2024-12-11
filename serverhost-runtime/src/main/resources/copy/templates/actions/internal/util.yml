@@ -3,6 +3,10 @@ init-placeholders:
     field: "$.server-software"
     lowercase: true
     type: "infer"
+  - key: "version"
+    field: "$.minecraft-version"
+    lowercase: true
+    type: "infer"
   - key: "configurator"
     field: "$.configurator"
     type: "infer"
