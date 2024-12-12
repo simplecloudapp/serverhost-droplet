@@ -18,7 +18,7 @@ class ActionProvider(private val dir: Path) {
         }
         try {
             actions = YamlActionLoader.load(dir)
-        }catch (e: Exception) {
+        } catch (e: Exception) {
             logger.error("action failed to load: ${e.cause?.javaClass?.name ?: "unknown"}: ${e.message}")
         }
         logger.info("Loaded ${actions.size} actions")

@@ -12,6 +12,8 @@ configurate = "4.1.2"
 clikt = "5.0.1"
 toml4j = "0.7.2"
 gson = "2.11.0"
+commons-compress = "1.27.1"
+xz = "1.10"
 
 [libraries]
 kotlin-jvm = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
@@ -39,6 +41,9 @@ configurate-extra-kotlin = { module = "org.spongepowered:configurate-extra-kotli
 toml4j = { module = "com.moandjiezana.toml:toml4j", version.ref = "toml4j" }
 
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
 
 [bundles]
 log4j = [
