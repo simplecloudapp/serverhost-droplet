@@ -18,12 +18,10 @@ object JsonConfigurator : Configurator<ConfigurationNode> {
 
     override fun save(data: ConfigurationNode, file: File) {
         val existing = load(file)
-        val saved: ConfigurationNode
-        if (existing == null) {
-            saved = data
+        val saved: ConfigurationNode = if (existing == null) {
+            data
         } else {
-            saved = existing.copy()
-            data.mergeFrom(saved)
+            data.mergeFrom(existing.copy())
         }
         val loader = GsonConfigurationLoader.builder().file(file).build()
         loader.save(saved)
