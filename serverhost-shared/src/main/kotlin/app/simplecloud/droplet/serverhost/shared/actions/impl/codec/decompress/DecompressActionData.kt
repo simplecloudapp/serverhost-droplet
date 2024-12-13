@@ -4,7 +4,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data class DecompressActionData(
-    val archive: String,
-    val path: String = "/",
+    val path: String,
+    val dest: String,
     val replace: Boolean = true
 )

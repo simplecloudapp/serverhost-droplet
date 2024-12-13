@@ -23,7 +23,7 @@ object CompressAction : YamlAction<CompressActionData> {
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx)
             ?: throw NullPointerException("Placeholder context is required but was not found")
 
-        val sourcePath = placeholders.parse(data.directory)
+        val sourcePath = placeholders.parse(data.path)
         require(sourcePath.isNotBlank()) { "Source path cannot be empty." }
 
         val archiveType = try {
@@ -36,10 +36,13 @@ object CompressAction : YamlAction<CompressActionData> {
         require(Files.exists(sourceDirPath)) { "Source directory does not exist: ${sourceDirPath.toAbsolutePath()}." }
         require(Files.isDirectory(sourceDirPath)) { "${sourceDirPath.toAbsolutePath()} is not a directory." }
 
-        val dataDest = Paths.get(placeholders.parse(data.dest))
+        val destinationPath = placeholders.parse(data.dest).let {
+            if (it.isBlank()) sourceDirPath.parent.toAbsolutePath()
+            else Paths.get(it)
+        }
+
         val destinationFileName = "${sourceDirPath.fileName}${archiveType.extension}"
-        val destinationPath = dataDest.resolve(destinationFileName)
-        val destinationFile = destinationPath.toFile()
+        val destinationFile = destinationPath.resolve(destinationFileName).toFile()
 
         Files.createDirectories(destinationPath.parent)
 

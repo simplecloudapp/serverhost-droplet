@@ -22,37 +22,47 @@ object DecompressAction : YamlAction<DecompressActionData> {
 
     override fun exec(ctx: YamlActionContext, data: DecompressActionData) {
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx)
-            ?: throw NullPointerException("Placeholder context is required but was not found")
+            ?: throw IllegalStateException("Placeholder context is required but was not found.")
 
-        require(placeholders.parse(data.archive).isNotBlank()) { "Archive path cannot be empty." }
-        require(placeholders.parse(data.path).isNotBlank()) { "Destination path cannot be empty." }
+        val parsedPath = placeholders.parse(data.path).takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("Archive path cannot be empty.")
 
-        val archiveFilePath = Paths.get(placeholders.parse(data.archive))
+        val archiveFilePath = Paths.get(parsedPath)
         val archiveFile = archiveFilePath.toFile()
         require(archiveFile.exists()) { "Archive file does not exist: ${archiveFile.absolutePath}." }
         require(archiveFile.isFile) { "${archiveFile.absolutePath} is not a file." }
 
-        val destinationPath: Path = Paths.get(placeholders.parse(data.path))
+        val destinationPath = placeholders.parse(data.dest).let {
+            if (it.isBlank()) archiveFilePath.parent.toAbsolutePath()
+            else Paths.get(it)
+        }
+
+        require(!(data.replace && destinationPath.toFile().exists())) {
+            "File already exists and replace is set to false: $destinationPath."
+        }
 
         if (!Files.exists(destinationPath)) {
-            require(Files.createDirectories(destinationPath) != null) { "Failed to create directory: $destinationPath." }
+            try {
+                Files.createDirectories(destinationPath)
+            } catch (e: IOException) {
+                throw IllegalStateException("Failed to create directory: $destinationPath.", e)
+            }
         } else {
             require(Files.isDirectory(destinationPath)) { "$destinationPath is not a directory." }
         }
 
         try {
             val archiveType = resolveArchiveType(archiveFilePath)
-            val replace = data.replace
 
             when (archiveType) {
                 ArchiveType.TAR_GZ, ArchiveType.TGZ, ArchiveType.TAR_BZ2, ArchiveType.TBZ2 ->
-                    extractCompressed(archiveFile, destinationPath, replace)
+                    extractCompressed(archiveFile, destinationPath, data.replace)
 
                 ArchiveType.ZIP, ArchiveType.TAR ->
-                    extractArchive(archiveFile, destinationPath, replace)
+                    extractArchive(archiveFile, destinationPath, data.replace)
 
                 ArchiveType.SEVEN_Z ->
-                    extract7z(archiveFile, destinationPath, replace)
+                    extract7z(archiveFile, destinationPath, data.replace)
             }
 
         } catch (e: ArchiveException) {
