@@ -6,7 +6,7 @@ import app.simplecloud.serverhost.config.YamlConfig
 open class YamlGroupConfig(dirPath: String) : YamlConfig(dirPath) {
 
     inline fun <reified T> load(group: Group): T? {
-        return load<T>(group.name + ".yml")
+        return load<T>("${group.name}.yml")
     }
 
     override fun <T> save(path: String?, obj: T) {
@@ -14,6 +14,6 @@ open class YamlGroupConfig(dirPath: String) : YamlConfig(dirPath) {
     }
 
     fun <T> save(group: Group, obj: T) {
-        save(group.name + ".yml", obj)
+        save("${group.name}.yml", obj)
     }
 }

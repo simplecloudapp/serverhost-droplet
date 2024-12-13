@@ -1,8 +1,7 @@
 package app.simplecloud.serverhost.configurator.impl
 
 import app.simplecloud.serverhost.configurator.Configurator
-import com.moandjiezana.toml.Toml
-import com.moandjiezana.toml.TomlWriter
+import com.electronwill.nightconfig.core.file.FileConfig
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
 import java.io.File
@@ -17,15 +16,24 @@ object TomlConfigurator : Configurator<MutableMap<String, Any>> {
     }
 
     override fun load(file: File): MutableMap<String, Any>? {
-        if (!file.exists()) return mutableMapOf()
-        return Toml().read(file).toMap()
+        if (!file.exists()) return null
+        val config = FileConfig.of(file)
+        config.load()
+        val returned = mutableMapOf<String, Any>()
+        config.entrySet().forEach { entry ->
+            returned[entry.key] = entry.getValue()
+        }
+        return returned
     }
 
     override fun save(data: MutableMap<String, Any>, file: File) {
         val existing = load(file) ?: mutableMapOf()
         val mergedMap = mergeMaps(existing, data)
-        val writer = TomlWriter()
-        writer.write(mergedMap, file)
+        val config = FileConfig.of(file)
+        mergedMap.forEach { (key, value) ->
+            config.set(key, value)
+        }
+        config.save()
     }
 
     private fun mergeMaps(first: Map<String, Any>, second: Map<String, Any>): Map<String, Any> {
