@@ -1,7 +1,5 @@
 package app.simplecloud.droplet.serverhost.shared.logs
 
-import java.io.OutputStream
-
 
 class ScreenExecutor(private var pid: Long) {
 
@@ -10,8 +8,8 @@ class ScreenExecutor(private var pid: Long) {
 
     init {
         var handle = ProcessHandle.of(pid)
-        while(handle.isPresent) {
-            if(handle.get().info().commandLine().orElseGet { "" }.startsWith("SCREEN")) {
+        while (handle.isPresent) {
+            if (handle.get().info().commandLine().orElseGet { "" }.lowercase().startsWith("screen")) {
                 pid = handle.get().pid()
                 isScreen = true
                 break
@@ -24,21 +22,10 @@ class ScreenExecutor(private var pid: Long) {
         return isScreen
     }
 
-    private fun startScreenProcess(toSend: String): Process {
+    fun sendCommand(toSend: String): Process {
         //TODO: Test this on not arch
         val command = arrayOf("screen", "-S", pid.toString(), "-X", "stuff \"$toSend\\n\"")
         return Runtime.getRuntime().exec(command)
-    }
-
-    // Send a command to the screen session
-    fun sendCommand(command: String) {
-        val process = startScreenProcess(command)
-
-        // Get the input stream and write the command to it
-        val outputStream: OutputStream = process.outputStream
-        outputStream.write("$command\n".toByteArray())
-        outputStream.flush()
-        stopHook(process)
     }
 
     // Cancel the process explicitly if needed
