@@ -12,7 +12,6 @@ dependencies {
     implementation(rootProject.libs.kotlin.reflect)
     testImplementation(rootProject.libs.kotlin.test)
     implementation(rootProject.libs.commons.compress)
-    // We need this library to support 7z codec
     implementation(rootProject.libs.xz)
 }
 

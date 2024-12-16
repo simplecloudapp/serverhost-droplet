@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.withLock
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -164,6 +165,7 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Server with this id already exists.")
             return false
         }
+
         val runtimeConfig = GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml")
         if (!checkAcceptance(runtimeConfig)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group not supported by this ServerHost.")
@@ -186,6 +188,7 @@ class ServerRunner(
         if (!builder.directory().exists()) {
             builder.directory().mkdirs()
         }
+
         val process = builder.start()
         serverToProcessHandle[server] = process.toHandle()
         logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
@@ -215,9 +218,11 @@ class ServerRunner(
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false
+
         copyTemplateMutex.withLock {
             executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
         }
+
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
         PortProcessHandle.removePreBind(server.port.toInt(), true)
         return true
@@ -229,15 +234,16 @@ class ServerRunner(
             logger.error("Could not find server $uniqueId")
             return false
         }
+
         val process = serverToProcessHandle[server]
         if (process == null) {
             logger.error("Could not find server process of server ${server.group}-${server.numericalId}")
             return false
         }
-        if (!forcibly)
-            process.destroy()
-        else
-            process.destroyForcibly()
+
+        val screenSessionName = "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}"
+        terminateScreenSession(screenSessionName)
+
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
         try {
             process.onExit().await()
@@ -292,6 +298,19 @@ class ServerRunner(
             return Optional.empty()
         }
         return getRealProcessParent(registeredServer, parent)
+    }
+
+    private fun terminateScreenSession(screenSessionId: String) {
+        try {
+            val command = "screen -S $screenSessionId -X quit"
+            val process = ProcessBuilder(command.split(" "))
+                .redirectErrorStream(true)
+                .start()
+
+            process.waitFor()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
     }
 
     private fun checkAcceptance(runtimeConfig: GroupRuntime?): Boolean {
