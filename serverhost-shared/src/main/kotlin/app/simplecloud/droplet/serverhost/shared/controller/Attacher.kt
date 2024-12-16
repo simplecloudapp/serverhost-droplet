@@ -1,8 +1,11 @@
 package app.simplecloud.droplet.serverhost.shared.controller
 
 import app.simplecloud.controller.shared.host.ServerHost
+import app.simplecloud.droplet.api.droplet.Droplet
 import build.buf.gen.simplecloud.controller.v1.AttachServerHostRequest
+import build.buf.gen.simplecloud.controller.v1.ControllerDropletServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
+import build.buf.gen.simplecloud.controller.v1.RegisterDropletRequest
 import io.grpc.ConnectivityState
 import io.grpc.ManagedChannel
 import kotlinx.coroutines.*
@@ -11,13 +14,27 @@ import org.apache.logging.log4j.LogManager
 class Attacher(
     private val serverHost: ServerHost,
     private val channel: ManagedChannel,
-    private val stub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub
+    private val serverStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
+    private val dropletStub: ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub,
 ) {
     private val logger = LogManager.getLogger(Attacher::class.java)
 
     private suspend fun attach(): Boolean {
         try {
-            stub.attachServerHost(AttachServerHostRequest.newBuilder().setServerHost(serverHost.toDefinition()).build())
+            serverStub.attachServerHost(
+                AttachServerHostRequest.newBuilder().setServerHost(serverHost.toDefinition()).build()
+            )
+            dropletStub.registerDroplet(
+                RegisterDropletRequest.newBuilder().setDefinition(
+                    Droplet(
+                        type = "serverhost",
+                        host = serverHost.host,
+                        id = serverHost.id,
+                        port = serverHost.port,
+                        envoyPort = 8081
+                    ).toDefinition()
+                ).build()
+            )
             logger.info("Successfully attached to Controller.")
             return true
         } catch (e: Exception) {
