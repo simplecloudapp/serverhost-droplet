@@ -2,7 +2,6 @@ package app.simplecloud.droplet.serverhost.shared.controller
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.api.droplet.Droplet
-import build.buf.gen.simplecloud.controller.v1.AttachServerHostRequest
 import build.buf.gen.simplecloud.controller.v1.ControllerDropletServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.RegisterDropletRequest
@@ -14,17 +13,13 @@ import org.apache.logging.log4j.LogManager
 class Attacher(
     private val serverHost: ServerHost,
     private val channel: ManagedChannel,
-    private val serverStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
-    private val dropletStub: ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub,
+    private val stub: ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub,
 ) {
     private val logger = LogManager.getLogger(Attacher::class.java)
 
     private suspend fun attach(): Boolean {
         try {
-            serverStub.attachServerHost(
-                AttachServerHostRequest.newBuilder().setServerHost(serverHost.toDefinition()).build()
-            )
-            dropletStub.registerDroplet(
+            stub.registerDroplet(
                 RegisterDropletRequest.newBuilder().setDefinition(
                     Droplet(
                         type = "serverhost",

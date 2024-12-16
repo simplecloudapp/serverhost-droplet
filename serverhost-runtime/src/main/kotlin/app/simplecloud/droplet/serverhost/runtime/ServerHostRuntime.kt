@@ -92,7 +92,7 @@ class ServerHostRuntime(
     private fun attach() {
         logger.info("Attaching to controller...")
         val attacher =
-            Attacher(serverHost, controllerChannel, controllerStub, controllerDropletStub)
+            Attacher(serverHost, controllerChannel, controllerDropletStub)
         attacher.enforceAttach()
     }
 
