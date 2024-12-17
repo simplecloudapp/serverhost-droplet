@@ -11,6 +11,7 @@ import app.simplecloud.droplet.serverhost.shared.controller.Attacher
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
+import build.buf.gen.simplecloud.controller.v1.ControllerDropletServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +42,9 @@ class ServerHostRuntime(
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
         .withCallCredentials(authCallCredentials)
+    private val controllerDropletStub =
+        ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub(controllerChannel)
+            .withCallCredentials(authCallCredentials)
     private val runner = ServerRunner(
         configurator,
         templateProvider,
@@ -87,7 +91,9 @@ class ServerHostRuntime(
 
     private fun attach() {
         logger.info("Attaching to controller...")
-        Attacher(serverHost, controllerChannel, controllerStub).enforceAttach()
+        val attacher =
+            Attacher(serverHost, controllerChannel, controllerDropletStub)
+        attacher.enforceAttach()
     }
 
     private fun createGrpcServer(): Server {
