@@ -243,9 +243,15 @@ class ServerRunner(
 
         val load = GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml")
 
+        val placeholders = createRuntimePlaceholders(server)
+
         load?.jvm?.screenStop.let {
             if (it != null) {
-                terminateScreenSession(it)
+                var value = it
+                placeholders.forEach { placeholder ->
+                    value = value!!.replace(placeholder.key, placeholder.value)
+                }
+                terminateScreenSession(value!!)
             } else {
                 if (!forcibly)
                     process.destroy()
@@ -317,6 +323,21 @@ class ServerRunner(
         return getRealProcessParent(registeredServer, parent)
     }
 
+    private fun createRuntimePlaceholders(server: Server): MutableMap<String, String> {
+        val placeholders = mutableMapOf(
+            "%MIN_MEMORY%" to server.minMemory.toString(),
+            "%MAX_MEMORY%" to server.maxMemory.toString(),
+            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
+            "%NUMERICAL_ID%" to server.numericalId.toString(),
+            "%GROUP%" to server.group,
+            "%UNIQUE_ID%" to server.uniqueId,
+        )
+        placeholders.putAll(server.properties.map {
+            "%${it.key.uppercase().replace("-", "_")}%" to it.value
+        })
+        return placeholders
+    }
+
     private fun terminateScreenSession(screenSessionId: String) {
         try {
             val command = "screen -S $screenSessionId -X quit"
@@ -336,7 +357,6 @@ class ServerRunner(
 
     private fun buildProcess(serverDir: File?, server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
         val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments()
-        jvmArgs.screenStop = "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}"
         //TODO exist check before save
         GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
         val command = mutableListOf<String>()
@@ -347,22 +367,14 @@ class ServerRunner(
         if (!logFile.parent.exists()) {
             FileUtils.createParentDirectories(logFile.toFile())
         }
-
-        val placeholders = mutableMapOf(
-            "%MIN_MEMORY%" to server.minMemory.toString(),
-            "%MAX_MEMORY%" to server.maxMemory.toString(),
-            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
-            "%NUMERICAL_ID%" to server.numericalId.toString(),
-            "%GROUP%" to server.group,
-            "%UNIQUE_ID%" to server.uniqueId,
-            "%MAIN_CLASS%" to JarMainClass.find(serverJar),
-            "%SERVER_FILE%" to serverJar.absolutePathString(),
-            "%LOG_FILE%" to logFile.absolutePathString(),
+        val placeholders = createRuntimePlaceholders(server)
+        placeholders.putAll(
+            mapOf(
+                "%MAIN_CLASS%" to JarMainClass.find(serverJar),
+                "%SERVER_FILE%" to serverJar.absolutePathString(),
+                "%LOG_FILE%" to logFile.absolutePathString(),
+            )
         )
-
-        placeholders.putAll(server.properties.map {
-            "%${it.key.uppercase().replace("-", "_")}%" to it.value
-        })
 
         if (!jvmArgs.options.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.options, placeholders)
@@ -409,7 +421,7 @@ class ServerRunner(
                     screenExecutable,
                     screenOpts + defaultOptions,
                     defaultArguments,
-                    null
+                    "%SCREEN_NAME%"
                 )
             }
 
