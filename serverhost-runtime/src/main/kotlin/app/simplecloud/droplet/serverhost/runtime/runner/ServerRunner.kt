@@ -372,8 +372,6 @@ class ServerRunner(
             command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
         }
 
-        jvmArgs.screenStop = placeholders["%SCREEN_NAME%"]
-
         //TODO exist check before save
         GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
 
