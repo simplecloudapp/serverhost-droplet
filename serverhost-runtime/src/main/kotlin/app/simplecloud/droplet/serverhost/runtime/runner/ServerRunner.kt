@@ -245,8 +245,7 @@ class ServerRunner(
 
         load?.jvm?.screenStop.let {
             if (it != null) {
-                val screenSessionName = "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}"
-                terminateScreenSession(screenSessionName)
+                terminateScreenSession(it)
             } else {
                 if (!forcibly)
                     process.destroy()
@@ -337,6 +336,9 @@ class ServerRunner(
 
     private fun buildProcess(serverDir: File?, server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
         val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments()
+        jvmArgs.screenStop = "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}"
+        //TODO exist check before save
+        GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
         val command = mutableListOf<String>()
         command.add(jvmArgs.executable ?: defaultExecutable)
         val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()

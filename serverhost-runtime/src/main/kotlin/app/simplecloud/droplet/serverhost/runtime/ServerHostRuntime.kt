@@ -87,8 +87,7 @@ class ServerHostRuntime(
 
     private fun attach() {
         logger.info("Attaching to controller...")
-        val attacher = Attacher(serverHost, controllerChannel, controllerStub)
-        attacher.enforceAttach()
+        Attacher(serverHost, controllerChannel, controllerStub).enforceAttach()
     }
 
     private fun createGrpcServer(): Server {
