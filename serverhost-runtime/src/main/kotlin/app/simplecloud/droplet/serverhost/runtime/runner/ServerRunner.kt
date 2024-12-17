@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.withLock
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -164,6 +165,7 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Server with this id already exists.")
             return false
         }
+
         val runtimeConfig = GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml")
         if (!checkAcceptance(runtimeConfig)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group not supported by this ServerHost.")
@@ -186,6 +188,7 @@ class ServerRunner(
         if (!builder.directory().exists()) {
             builder.directory().mkdirs()
         }
+
         val process = builder.start()
         serverToProcessHandle[server] = process.toHandle()
         logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
@@ -215,9 +218,11 @@ class ServerRunner(
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false
+
         copyTemplateMutex.withLock {
             executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
         }
+
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
         PortProcessHandle.removePreBind(server.port.toInt(), true)
         return true
@@ -229,15 +234,32 @@ class ServerRunner(
             logger.error("Could not find server $uniqueId")
             return false
         }
+
         val process = serverToProcessHandle[server]
         if (process == null) {
             logger.error("Could not find server process of server ${server.group}-${server.numericalId}")
             return false
         }
-        if (!forcibly)
-            process.destroy()
-        else
-            process.destroyForcibly()
+
+        val load = GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml")
+
+        val placeholders = createRuntimePlaceholders(server)
+
+        load?.jvm?.screenStop.let {
+            if (it != null) {
+                var value = it
+                placeholders.forEach { placeholder ->
+                    value = value!!.replace(placeholder.key, placeholder.value)
+                }
+                terminateScreenSession(value!!)
+            } else {
+                if (!forcibly)
+                    process.destroy()
+                else
+                    process.destroyForcibly()
+            }
+        }
+
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
         try {
             process.onExit().await()
@@ -245,6 +267,7 @@ class ServerRunner(
             stopTries.remove(uniqueId)
             return true
         } catch (e: Exception) {
+            e.printStackTrace()
             return false
         }
     }
@@ -261,8 +284,10 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
+
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
             ?.let { getRealProcessParent(server, it).orElse(null) }
+
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
             executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
@@ -270,6 +295,7 @@ class ServerRunner(
             PortProcessHandle.removePreBind(server.port.toInt(), true)
             return false
         }
+
         serverToProcessHandle[server] = handle
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully reattached on PID ${handle.pid()}")
         return true
@@ -282,16 +308,47 @@ class ServerRunner(
      */
     private fun getRealProcessParent(registeredServer: Server, handle: ProcessHandle): Optional<ProcessHandle> {
         val path = ProcessDirectory.of(handle).orElse(getServerDir(registeredServer).toPath())
+
         if (isServerDir(registeredServer, path)) {
             return Optional.of(handle)
         }
+
         val parent = handle.parent().orElse(null)
         if (parent == null || parent.info().command().orElse(null)
                 ?.startsWith(registeredServer.properties.getOrDefault("executable", defaultExecutable)) == false
         ) {
             return Optional.empty()
         }
+
         return getRealProcessParent(registeredServer, parent)
+    }
+
+    private fun createRuntimePlaceholders(server: Server): MutableMap<String, String> {
+        val placeholders = mutableMapOf(
+            "%MIN_MEMORY%" to server.minMemory.toString(),
+            "%MAX_MEMORY%" to server.maxMemory.toString(),
+            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
+            "%NUMERICAL_ID%" to server.numericalId.toString(),
+            "%GROUP%" to server.group,
+            "%UNIQUE_ID%" to server.uniqueId,
+        )
+        placeholders.putAll(server.properties.map {
+            "%${it.key.uppercase().replace("-", "_")}%" to it.value
+        })
+        return placeholders
+    }
+
+    private fun terminateScreenSession(screenSessionId: String) {
+        try {
+            val command = "screen -S $screenSessionId -X quit"
+            val process = ProcessBuilder(command.split(" "))
+                .redirectErrorStream(true)
+                .start()
+
+            process.waitFor()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
     }
 
     private fun checkAcceptance(runtimeConfig: GroupRuntime?): Boolean {
@@ -310,28 +367,26 @@ class ServerRunner(
         if (!logFile.parent.exists()) {
             FileUtils.createParentDirectories(logFile.toFile())
         }
-
-        val placeholders = mutableMapOf(
-            "%MIN_MEMORY%" to server.minMemory.toString(),
-            "%MAX_MEMORY%" to server.maxMemory.toString(),
-            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
-            "%NUMERICAL_ID%" to server.numericalId.toString(),
-            "%GROUP%" to server.group,
-            "%UNIQUE_ID%" to server.uniqueId,
-            "%MAIN_CLASS%" to JarMainClass.find(serverJar),
-            "%SERVER_FILE%" to serverJar.absolutePathString(),
-            "%LOG_FILE%" to logFile.absolutePathString(),
+        val placeholders = createRuntimePlaceholders(server)
+        placeholders.putAll(
+            mapOf(
+                "%MAIN_CLASS%" to JarMainClass.find(serverJar),
+                "%SERVER_FILE%" to serverJar.absolutePathString(),
+                "%LOG_FILE%" to logFile.absolutePathString(),
+            )
         )
-        placeholders.putAll(server.properties.map {
-            "%${it.key.uppercase().replace("-", "_")}%" to it.value
-        })
 
         if (!jvmArgs.options.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.options, placeholders)
         }
+
         if (!jvmArgs.arguments.isNullOrEmpty()) {
             command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
         }
+
+        //TODO exist check before save
+        GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
+
         val builder = ProcessBuilder()
             .command(command)
             .directory(serverDir ?: getServerDir(server, runtimeConfig))
@@ -365,7 +420,8 @@ class ServerRunner(
                 JvmArguments(
                     screenExecutable,
                     screenOpts + defaultOptions,
-                    defaultArguments
+                    defaultArguments,
+                    "%SCREEN_NAME%"
                 )
             }
 
@@ -373,17 +429,18 @@ class ServerRunner(
                 JvmArguments(
                     defaultExecutable,
                     defaultOptions,
-                    defaultArguments
+                    defaultArguments,
+                    null
                 )
             }
         }
     }
 
-
     fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 serverToProcessHandle.keys.toList().forEach {
+
                     var delete = false
                     var server = it
                     try {

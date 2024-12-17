@@ -7,4 +7,5 @@ data class JvmArguments(
     val executable: String?,
     val options: List<String>?,
     val arguments: List<String>?,
+    var screenStop: String?
 )

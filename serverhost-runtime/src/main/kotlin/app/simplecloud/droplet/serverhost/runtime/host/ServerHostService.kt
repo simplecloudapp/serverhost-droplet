@@ -14,7 +14,6 @@ import io.grpc.StatusException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.apache.logging.log4j.LogManager
-import kotlin.math.log
 
 class ServerHostService(
     private val serverHost: ServerHost,
