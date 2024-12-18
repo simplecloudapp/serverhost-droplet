@@ -4,20 +4,32 @@ import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
+import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.logs.LogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenExecutor
 import build.buf.gen.simplecloud.controller.v1.*
+import com.google.protobuf.ByteString
 import io.grpc.Status
 import io.grpc.StatusException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
+import java.io.FileInputStream
+import java.nio.file.Paths
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
 
 class ServerHostService(
     private val serverHost: ServerHost,
     private val runner: ServerRunner,
+    private val cache: FileSystemSnapshotCache,
+    private val args: ServerHostStartCommand,
 ) : ServerHostServiceGrpcKt.ServerHostServiceCoroutineImplBase() {
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
@@ -79,5 +91,29 @@ class ServerHostService(
             return flow { }
         }
     }
+
+    override suspend fun getFileContents(request: GetFileContentsRequest): GetFileContentsResponse {
+        val file = Paths.get(args.templatePath.absolutePathString(), request.path)
+        if(!file.exists() || file.isDirectory())
+            throw StatusException(Status.NOT_FOUND.withDescription("File not found or a directory"))
+        val fileData = ByteArray(file.toFile().length().toInt())
+        withContext(Dispatchers.IO) {
+            val inputStream = FileInputStream(file.toFile())
+            inputStream.read(fileData)
+            inputStream.close()
+        }
+        return getFileContentsResponse {
+            content = ByteString.copyFrom(fileData)
+        }
+    }
+
+    override suspend fun getFileTree(request: GetFileTreeRequest): GetFileTreeResponse {
+        cache.update()
+
+        return getFileTreeResponse {
+            files.addAll(cache.get())
+        }
+    }
+
 
 }

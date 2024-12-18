@@ -2,6 +2,7 @@ package app.simplecloud.droplet.serverhost.runtime
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.api.auth.AuthCallCredentials
+import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
@@ -33,11 +34,14 @@ class ServerHostRuntime(
         ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
     private val configurator = ConfiguratorExecutor()
     private val actionProvider =
-        ActionProvider(Path.of(serverHostStartCommand.templateDefinitionPath.absolutePathString(), "actions"))
+        ActionProvider(
+            Path.of(serverHostStartCommand.templateDefinitionPath.absolutePathString(), "actions")
+        )
     private val templateProvider = TemplateProvider(
         serverHostStartCommand,
         actionProvider
     )
+    private val templateSnapshotCache = FileSystemSnapshotCache(serverHostStartCommand.templatePath)
     private val controllerChannel =
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
@@ -63,6 +67,7 @@ class ServerHostRuntime(
         runner.startServerStateChecker()
         actionProvider.load()
         templateProvider.load()
+        startFileSystemWatcher()
 
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
@@ -88,6 +93,11 @@ class ServerHostRuntime(
         }
     }
 
+    private fun startFileSystemWatcher() {
+        logger.info("Starting template file system watcher...")
+        templateSnapshotCache.registerWatcher()
+    }
+
 
     private fun attach() {
         logger.info("Attaching to controller...")
@@ -102,7 +112,7 @@ class ServerHostRuntime(
             serverHostStartCommand.grpcHost,
             serverHostStartCommand.authorizationPort
         )
-            .addService(ServerHostService(serverHost, runner))
+            .addService(ServerHostService(serverHost, runner, templateSnapshotCache, serverHostStartCommand))
             .build()
     }
 
