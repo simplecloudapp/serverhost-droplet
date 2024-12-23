@@ -4,7 +4,6 @@ import build.buf.gen.simplecloud.controller.v1.TemplateFile
 import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
 import java.nio.file.FileSystems
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds
 import java.util.*
@@ -53,7 +52,7 @@ class FileSystemSnapshotCache(private val directory: Path) {
     }
 
     fun update() {
-        if(currentSnapshot != nextSnapshot) {
+        if (currentSnapshot != nextSnapshot) {
             create()
             currentSnapshot = nextSnapshot
         }
@@ -68,13 +67,15 @@ class FileSystemSnapshotCache(private val directory: Path) {
         if (!current.exists()) return
         if (current.isDirectory()) {
             list.add(
-                TemplateFile.newBuilder().setType("directory").setIsDirectory(true).setPath(directory.relativize(current).pathString).build()
+                TemplateFile.newBuilder().setType("directory").setIsDirectory(true)
+                    .setPath(directory.relativize(current).pathString).build()
             )
             current.listDirectoryEntries().forEach { collectFiles(it, list) }
             return
         }
         list.add(
-            TemplateFile.newBuilder().setType(current.extension.replace("yml", "yaml")).setPath(directory.relativize(current).pathString)
+            TemplateFile.newBuilder().setType(current.extension.replace("yml", "yaml"))
+                .setPath(directory.relativize(current).pathString)
                 .setIsDirectory(false).build()
         )
     }

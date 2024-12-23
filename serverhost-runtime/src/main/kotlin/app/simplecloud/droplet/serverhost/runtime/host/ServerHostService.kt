@@ -20,10 +20,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import java.io.FileInputStream
+import java.io.FileWriter
+import java.nio.file.Files
 import java.nio.file.Paths
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.exists
-import kotlin.io.path.isDirectory
+import kotlin.io.path.*
 
 class ServerHostService(
     private val serverHost: ServerHost,
@@ -94,7 +94,7 @@ class ServerHostService(
 
     override suspend fun getFileContents(request: GetFileContentsRequest): GetFileContentsResponse {
         val file = Paths.get(args.templatePath.absolutePathString(), request.path)
-        if(!file.exists() || file.isDirectory())
+        if (!file.exists() || file.isDirectory())
             throw StatusException(Status.NOT_FOUND.withDescription("File not found or a directory"))
         val fileData = ByteArray(file.toFile().length().toInt())
         withContext(Dispatchers.IO) {
@@ -112,6 +112,49 @@ class ServerHostService(
 
         return getFileTreeResponse {
             files.addAll(cache.get())
+        }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    override suspend fun deleteFile(request: DeleteFileRequest): DeleteFileResponse {
+        val file = Paths.get(args.templatePath.absolutePathString(), request.path)
+        if (!file.exists())
+            throw StatusException(Status.NOT_FOUND.withDescription("File not found"))
+        if (!file.isDirectory())
+            file.deleteIfExists()
+        else
+            file.deleteRecursively()
+        return deleteFileResponse {}
+    }
+
+    override suspend fun moveFile(request: MoveFileRequest): MoveFileResponse {
+        val from = Paths.get(args.templatePath.absolutePathString(), request.from)
+        if(!from.exists())
+            throw StatusException(Status.NOT_FOUND.withDescription("From file not found"))
+        val to = Paths.get(args.templatePath.absolutePathString(), request.to)
+        withContext(Dispatchers.IO) {
+            Files.move(from, to)
+        }
+        return moveFileResponse {
+        }
+    }
+
+    override suspend fun updateFile(request: UpdateFileRequest): UpdateFileResponse {
+        val file = Paths.get(args.templatePath.absolutePathString(), request.path)
+        if (!file.exists()) {
+            file.parent.createDirectories()
+            file.createFile()
+        }
+
+        withContext(Dispatchers.IO) {
+            val writer = FileWriter(file.toFile(), Charsets.UTF_8)
+            writer.write(request.content.toStringUtf8())
+            writer.flush()
+            writer.close()
+        }
+
+        return updateFileResponse {
+
         }
     }
 

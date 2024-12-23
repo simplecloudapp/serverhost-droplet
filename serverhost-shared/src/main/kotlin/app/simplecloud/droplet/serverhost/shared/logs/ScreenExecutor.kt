@@ -23,8 +23,7 @@ class ScreenExecutor(private var pid: Long) {
     }
 
     fun sendCommand(toSend: String): Process {
-        //TODO: Test this on not arch
-        val command = arrayOf("screen", "-S", pid.toString(), "-X", "stuff \"$toSend\\n\"")
+        val command = arrayOf("screen", "-S", pid.toString(), "-X", "stuff", "$toSend\\n")
         return Runtime.getRuntime().exec(command)
     }
 
