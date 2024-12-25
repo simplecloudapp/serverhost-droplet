@@ -1,9 +1,6 @@
-package app.simplecloud.droplet.serverhost.shared.logs
-
+package app.simplecloud.droplet.serverhost.shared.hack
 
 class ScreenExecutor(private var pid: Long) {
-
-    private var streamingProcess: Process? = null
     private var isScreen = false
 
     init {
@@ -22,17 +19,9 @@ class ScreenExecutor(private var pid: Long) {
         return isScreen
     }
 
-    fun sendCommand(toSend: String): Process {
-        val command = arrayOf("screen", "-S", pid.toString(), "-X", "stuff", "$toSend\\n")
-        return Runtime.getRuntime().exec(command)
-    }
-
-    // Cancel the process explicitly if needed
-    private fun stopHook(process: Process) {
-        process.destroy()
-    }
-
-    fun stopHook() {
-        stopHook(streamingProcess!!)
+    fun sendCommand(toSend: Array<String>) {
+        if(!isScreen) return
+        val command = arrayOf("screen", "-S", pid.toString(), "-X", *toSend)
+        Runtime.getRuntime().exec(command)
     }
 }
