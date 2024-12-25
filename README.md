@@ -44,7 +44,7 @@ This repository is licensed under [Apache 2.0][license].
 <!-- LINK GROUP -->
 
 <!-- ✅ PLEASE EDIT -->
-[banner]: https://raw.githubusercontent.com/theSimpleCloud/branding/refs/heads/main/readme/banner/droplet/server-host.png
+[banner]: https://raw.githubusercontent.com/simplecloudapp/branding/refs/heads/main/readme/banner/droplet/server-host.png
 [issue-bug-report]: https://github.com/theSimpleCloud/serverhost-droplet/issues/new?labels=bug&projects=template=01_BUG-REPORT.yml&title=%5BBUG%5D+%3Ctitle%3E
 [issue-feature-request]: https://github.com/theSimpleCloud/serverhost-droplet/discussions/new?category=ideas
 [docs-thisproject]: https://docs.simplecloud.app/droplet/serverhost
