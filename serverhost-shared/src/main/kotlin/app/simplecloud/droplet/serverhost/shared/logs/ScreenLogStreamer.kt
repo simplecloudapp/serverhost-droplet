@@ -16,6 +16,7 @@ class ScreenLogStreamer(pid: Long, logFile: Path) : LogStreamer {
         configurer.setLogsFlush(0)
         return flow {
             emitAll(streamer.readScreenLogs())
+            configurer.setLogsFlush(10)
         }.flowOn(Dispatchers.IO)
     }
 
