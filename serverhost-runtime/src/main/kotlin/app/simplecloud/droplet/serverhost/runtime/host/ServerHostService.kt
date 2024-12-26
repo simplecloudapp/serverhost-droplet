@@ -10,7 +10,7 @@ import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
-import app.simplecloud.droplet.serverhost.shared.logs.ScreenLogStreamer
+import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
 import build.buf.gen.simplecloud.controller.v1.*
 import com.google.protobuf.ByteString
 import io.grpc.Status
@@ -18,6 +18,7 @@ import io.grpc.StatusException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
 import java.io.FileInputStream
@@ -82,26 +83,22 @@ class ServerHostService(
     }
 
     override fun streamServerLogs(request: ServerHostStreamServerLogsRequest): Flow<ServerHostStreamServerLogsResponse> {
-        val server = runner.getServer(request.serverId)
-            ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
-        val process = runner.getProcess(request.serverId)
-        if (process != null) {
-            val screenStreamer = ScreenLogStreamer(process.pid(), runner.getServerLogFile(server))
-            try {
-                return screenStreamer.readScreenLogs()
-            } catch (e: StatusException) {
-                e.printStackTrace()
-                screenStreamer.close()
-                return flow { }
-            }
-        }
-        logger.info("Screen streaming for server ${server.group}-${server.numericalId} (${request.serverId}) not available, defaulting to file streaming.")
-        val fileStreamer = DefaultLogStreamer(runner.getServerLogFile(server))
+        var configurer: ScreenConfigurer? = null
         try {
-            return fileStreamer.readScreenLogs()
-        } catch (e: StatusException) {
+            val server = runner.getServer(request.serverId)
+                ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
+            val process = runner.getProcess(request.serverId)
+            if (process != null) {
+                configurer = ScreenConfigurer(process.pid())
+                configurer.setLogsFlush(0)
+                logger.warn("Screen streaming for server ${server.group}-${server.numericalId} (${request.serverId}) not available, log stream will be slower.")
+            }
+            val fileStreamer = DefaultLogStreamer(runner.getServerLogFile(server))
+            return fileStreamer.readScreenLogs().onCompletion { configurer?.setLogsFlush(10) }
+        } catch (e: Exception) {
+            configurer?.setLogsFlush(10)
             e.printStackTrace()
-            return flow { }
+            throw StatusException(Status.INTERNAL.withDescription("Failed to stream server logs: ${e.message}"))
         }
     }
 

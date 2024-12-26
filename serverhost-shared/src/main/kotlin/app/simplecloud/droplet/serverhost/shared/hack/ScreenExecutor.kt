@@ -6,8 +6,9 @@ class ScreenExecutor(private var pid: Long) {
     init {
         var handle = ProcessHandle.of(pid)
         while (handle.isPresent) {
-            if (handle.get().info().command().orElseGet { "" }.lowercase().startsWith("screen") || handle.get().info()
-                    .arguments().orElseGet { arrayOf("none") }[0].lowercase().startsWith("screen")
+            if (handle.get().info().commandLine().orElseGet { "" }.lowercase().startsWith("screen") || handle.get()
+                    .info().command().orElseGet { "" }.lowercase().startsWith("screen") || handle.get().info()
+                    .arguments().orElseGet { arrayOf("none") }.firstOrNull()?.lowercase()?.startsWith("screen") == true
             ) {
                 pid = handle.get().pid()
                 isScreen = true
