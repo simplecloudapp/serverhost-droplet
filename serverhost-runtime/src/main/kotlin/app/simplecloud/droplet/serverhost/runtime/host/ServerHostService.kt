@@ -97,7 +97,7 @@ class ServerHostService(
             return fileStreamer.readScreenLogs().onCompletion { configurer?.setLogsFlush(10) }
         } catch (e: Exception) {
             configurer?.setLogsFlush(10)
-            e.printStackTrace()
+            logger.error("Failed to stream server logs", e)
             throw StatusException(Status.INTERNAL.withDescription("Failed to stream server logs: ${e.message}"))
         }
     }
