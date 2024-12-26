@@ -60,3 +60,10 @@ every-with-software:
     to: "%server-dir%"
     replace: false
     type: "copy"
+
+copy-droplet-plugins:
+  - from: "%templates%/droplet-plugins/%software%"
+    to: "%server-dir%/plugins"
+    init-dir-if-missing: false
+    replace: false
+    type: "copy"
