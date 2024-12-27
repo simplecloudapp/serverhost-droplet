@@ -9,6 +9,7 @@ setup:
   - ref: util/every-with-software
   - ref: util/copy
   - ref: util/copy-droplet-plugins
+  - ref: util/copy-sc-plugins
   - ref: util/configurate
 
 delete:
