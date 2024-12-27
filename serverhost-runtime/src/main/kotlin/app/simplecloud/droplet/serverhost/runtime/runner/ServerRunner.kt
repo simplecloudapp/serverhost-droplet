@@ -241,7 +241,7 @@ class ServerRunner(
         val load = runtimeRepository.get(server.group)
 
         val env = environmentsRepository.get(load)
-        if (env != null && env.isScreen) {
+        if (env != null && env.useScreenStop) {
             terminateScreenSession(process.pid())
         } else {
             if (!forcibly)

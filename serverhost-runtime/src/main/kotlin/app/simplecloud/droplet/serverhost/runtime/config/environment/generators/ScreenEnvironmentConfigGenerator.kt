@@ -39,6 +39,7 @@ object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
         return EnvironmentConfig(
             name = getName(),
             isScreen = true,
+            useScreenStop = true,
             start = EnvironmentStartConfig(
                 command = command
             )
