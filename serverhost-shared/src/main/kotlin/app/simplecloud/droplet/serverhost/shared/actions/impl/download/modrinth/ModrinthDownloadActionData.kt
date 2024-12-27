@@ -8,7 +8,7 @@ data class ModrinthDownloadActionData(
     val gameVersion: String,
     val loader: String,
     val path: String,
-    val replace: Boolean = true,
+    val update: Boolean = false,
     val initDirIfMissing: Boolean = true,
 ) {
 }
