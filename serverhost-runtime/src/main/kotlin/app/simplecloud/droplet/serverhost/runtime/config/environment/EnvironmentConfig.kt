@@ -4,6 +4,7 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data class EnvironmentConfig(
+    val version: String = "1",
     val enabled: Boolean = true,
     val isScreen: Boolean = false,
     val useScreenStop: Boolean = false,
