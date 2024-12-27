@@ -9,6 +9,7 @@ data class ModrinthDownloadActionData(
     val loader: String,
     val path: String,
     val update: Boolean = false,
+    val asFile: Boolean = false,
     val initDirIfMissing: Boolean = true,
 ) {
 }

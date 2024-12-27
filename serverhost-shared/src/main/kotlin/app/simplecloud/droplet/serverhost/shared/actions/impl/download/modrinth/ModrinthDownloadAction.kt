@@ -21,7 +21,6 @@ import org.apache.logging.log4j.LogManager
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 
 object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
@@ -78,6 +77,7 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
                         downloadUrl = downloadUrl,
                         update = data.update,
                         initDirIfMissing = data.initDirIfMissing,
+                        asFile = data.asFile,
                         cachePath = Paths.get(placeholders.parse("/%templates%/cache/modrinth/")).resolve(loader)
                     )
                 }
@@ -148,9 +148,15 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
         downloadUrl: String,
         update: Boolean,
         initDirIfMissing: Boolean,
+        asFile: Boolean,
         cachePath: Path
     ) = withContext(Dispatchers.IO) {
-        val destinationFile = destinationPath.resolve(fileName)
+        val destinationFile: Path = if (asFile) {
+            destinationPath.resolve(fileName)
+        } else {
+            destinationPath
+        }
+
         val cacheFile = cachePath.resolve(fileName)
 
         when {
@@ -170,7 +176,7 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
 
                 logger.info("Downloading file: $fileName")
                 DownloadUtil.downloadFile(httpClient, downloadUrl, destinationFile)
-                println("CACHE: ->>>>>>>>>>>>>>>>>>>>>> ${cacheFile.absolutePathString()}")
+
                 Files.copy(destinationFile, cacheFile)
             }
         }
