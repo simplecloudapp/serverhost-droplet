@@ -4,12 +4,12 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data class EnvironmentConfig(
-    val version: String = "1",
     val enabled: Boolean = true,
     val isScreen: Boolean = false,
     val useScreenStop: Boolean = false,
     val isDocker: Boolean = false,
     val name: String = "",
     val start: EnvironmentStartConfig? = null,
-    val stop: EnvironmentStopConfig? = null
+    val stop: EnvironmentStopConfig? = null,
+    val version: String = "1",
 )
