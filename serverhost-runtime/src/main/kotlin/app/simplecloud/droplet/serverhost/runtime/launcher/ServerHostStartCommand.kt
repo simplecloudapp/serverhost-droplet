@@ -49,6 +49,12 @@ class ServerHostStartCommand(
     )
         .path()
         .default(Path.of("templates"))
+    val environmentsPath: Path by option(
+        help = "Path to the environment definition files (environments)",
+        envvar = "ENVIRONMENTS_PATH"
+    )
+        .path()
+        .default(Path.of("environments"))
     val runningServersPath by option(help = "Path to the running servers (running)", envvar = "RUNNING_SERVERS_PATH")
         .path()
         .default(Path.of("running"))

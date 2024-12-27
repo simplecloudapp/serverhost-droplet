@@ -2,6 +2,7 @@ package app.simplecloud.droplet.serverhost.runtime
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.droplet.api.auth.AuthCallCredentials
+import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
@@ -42,6 +43,7 @@ class ServerHostRuntime(
         actionProvider
     )
     private val templateSnapshotCache = FileSystemSnapshotCache(serverHostStartCommand.templatePath)
+    private val environmentsRepository = EnvironmentConfigRepository(serverHostStartCommand)
     private val controllerChannel =
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
@@ -56,7 +58,8 @@ class ServerHostRuntime(
         serverHost,
         serverHostStartCommand,
         controllerStub,
-        MetricsTracker(pubSubClient)
+        MetricsTracker(pubSubClient),
+        environmentsRepository
     )
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()

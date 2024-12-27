@@ -3,6 +3,8 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
+import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
+import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
@@ -29,6 +31,7 @@ import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
+import kotlin.math.log
 
 class ServerRunner(
     private val templateProvider: TemplateProvider,
@@ -36,22 +39,11 @@ class ServerRunner(
     private val args: ServerHostStartCommand,
     private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
     private val metricsTracker: MetricsTracker,
+    private val environmentsRepository: EnvironmentConfigRepository,
 ) {
 
     private val copyTemplateMutex = Mutex()
-
-    private val defaultOptions =
-        listOf(
-            "-Xms%MIN_MEMORY%M",
-            "-Xmx%MAX_MEMORY%M",
-            "-Dcom.mojang.eula.agree=true",
-            "-cp",
-            "${args.libsPath.absolutePathString()}${File.separator}*${File.pathSeparator}%SERVER_FILE%",
-            "%MAIN_CLASS%"
-        )
-    private val defaultArguments = listOf("nogui")
-    private val defaultExecutable: String = File(System.getProperty("java.home"), "bin/java").absolutePath
-    private val screenExecutable: String = "screen"
+    private val runtimeRepository = GroupRuntimeDirectory()
 
     private val stopTries = mutableMapOf<String, Int>()
     private val maxGracefulTries = 3
@@ -90,8 +82,9 @@ class ServerRunner(
 
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
         // server to respond to pings though)
+        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.let { findExecutable(it) }
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
-            val realProcess = getRealProcessParent(server, it).orElse(null)
+            val realProcess = executable?.let { exe -> getRealProcessParent(server, it, exe).orElse(null) }
             if (realProcess != null && serverToProcessHandle[server] != realProcess) {
                 logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
                 serverToProcessHandle[server] = realProcess
@@ -135,7 +128,7 @@ class ServerRunner(
     }
 
     private fun getServerDir(server: Server): File {
-        return getServerDir(server, GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml"))
+        return getServerDir(server, runtimeRepository.get(server.group))
     }
 
     private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
@@ -166,8 +159,7 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Server with this id already exists.")
             return false
         }
-
-        val runtimeConfig = GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml")
+        val runtimeConfig = runtimeRepository.get(server.group)
         if (!checkAcceptance(runtimeConfig)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group not supported by this ServerHost.")
             return false
@@ -183,17 +175,21 @@ class ServerRunner(
         if (ctx != null) {
             serverDir = getServerDir(ctx)
         }
+        try {
+            val builder = buildProcess(serverDir, server, runtimeConfig)
 
-        val builder = buildProcess(serverDir, server, runtimeConfig)
-
-        if (!builder.directory().exists()) {
-            builder.directory().mkdirs()
+            if (!builder.directory().exists()) {
+                builder.directory().mkdirs()
+            }
+            val process = builder.start()
+            serverToProcessHandle[server] = process.toHandle()
+            logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
+            return true
+        } catch (e: Exception) {
+            logger.error("Can not build process", e)
+            return false
         }
 
-        val process = builder.start()
-        serverToProcessHandle[server] = process.toHandle()
-        logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
-        return true
     }
 
     private fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes): YamlActionContext? {
@@ -242,23 +238,16 @@ class ServerRunner(
             return false
         }
 
-        val load = GroupRuntime.Config.load<GroupRuntime>("${server.group}.yml")
+        val load = runtimeRepository.get(server.group)
 
-        val placeholders = createRuntimePlaceholders(server)
-
-        load?.jvm?.screenStop.let {
-            if (it != null) {
-                var value = it
-                placeholders.forEach { placeholder ->
-                    value = value!!.replace(placeholder.key, placeholder.value)
-                }
-                terminateScreenSession(value!!)
-            } else {
-                if (!forcibly)
-                    process.destroy()
-                else
-                    process.destroyForcibly()
-            }
+        val env = environmentsRepository.get(load)
+        if (env != null && env.isScreen) {
+            terminateScreenSession(process.pid())
+        } else {
+            if (!forcibly)
+                process.destroy()
+            else
+                process.destroyForcibly()
         }
 
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
@@ -285,9 +274,9 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
-
+        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.let { findExecutable(it) }
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
-            ?.let { getRealProcessParent(server, it).orElse(null) }
+            ?.let { executable?.let { exe -> getRealProcessParent(server, it, exe).orElse(null) } }
 
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
@@ -307,7 +296,11 @@ class ServerRunner(
      * This works by searching for the highest parent process of a [ProcessHandle]
      * which is a process that has a server dir as execution environment.
      */
-    private fun getRealProcessParent(registeredServer: Server, handle: ProcessHandle): Optional<ProcessHandle> {
+    private fun getRealProcessParent(
+        registeredServer: Server,
+        handle: ProcessHandle,
+        executable: String
+    ): Optional<ProcessHandle> {
         val path = ProcessDirectory.of(handle).orElse(getServerDir(registeredServer).toPath())
 
         if (isServerDir(registeredServer, path)) {
@@ -316,12 +309,28 @@ class ServerRunner(
 
         val parent = handle.parent().orElse(null)
         if (parent == null || parent.info().command().orElse(null)
-                ?.startsWith(registeredServer.properties.getOrDefault("executable", defaultExecutable)) == false
+                ?.startsWith(executable) == false
         ) {
             return Optional.empty()
         }
 
-        return getRealProcessParent(registeredServer, parent)
+        return getRealProcessParent(registeredServer, parent, executable)
+    }
+
+    private fun findExecutable(env: EnvironmentConfig): String? {
+        if (env.isDocker) return null
+        var index = 0
+        if (env.isScreen) {
+            while (index < (env.start?.command?.size ?: 0)) {
+                val current = env.start?.command?.get(index) ?: ""
+                if (current == "-dmS" || current == "-S") {
+                    return env.start?.command?.get(index + 2) ?: ""
+                }
+                index++
+            }
+            return null
+        }
+        return env.start?.command?.get(0)
     }
 
     private fun createRuntimePlaceholders(server: Server): MutableMap<String, String> {
@@ -339,10 +348,9 @@ class ServerRunner(
         return placeholders
     }
 
-    private fun terminateScreenSession(screenSessionId: String) {
+    private fun terminateScreenSession(pid: Long) {
         try {
-            val command = "screen -S $screenSessionId -X quit"
-            val process = ProcessBuilder(command.split(" "))
+            val process = ProcessBuilder("screen", "-S", pid.toString(), "-X", "quit")
                 .redirectErrorStream(true)
                 .start()
 
@@ -356,14 +364,29 @@ class ServerRunner(
         return runtimeConfig == null || runtimeConfig.ignore != true
     }
 
-    private fun buildProcess(serverDir: File?, server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
-        val jvmArgs: JvmArguments = runtimeConfig?.jvm ?: crateDefaultJvmArguments()
-        //TODO exist check before save
-        GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
-        val command = mutableListOf<String>()
-        command.add(jvmArgs.executable ?: defaultExecutable)
-        val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()
+    private fun createDefaultEnvironment(): String {
+        if (ScreenCapabilities.isScreenAvailable()) {
+            return "screen"
+        }
+        return "default"
+    }
 
+    private fun buildProcess(serverDir: File?, server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
+        var runtime = runtimeConfig
+        if (runtimeConfig == null) {
+            val defaultEnv: String = createDefaultEnvironment()
+            val newRuntime = GroupRuntime(defaultEnv, null, null)
+            runtimeRepository.save("${server.group}.yml", newRuntime)
+            runtime = newRuntime
+        }
+        val env = environmentsRepository.get(runtime)
+        if (env?.enabled != true) {
+            throw IllegalArgumentException("Group ${server.group} is not using an enabled environment")
+        }
+        if (env.start?.command == null) {
+            throw IllegalArgumentException("Group ${server.group} is not using an command start environment")
+        }
+        val serverJar = ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"]!!).toPath()
         val logFile = getServerLogFile(server)
         if (!logFile.parent.exists()) {
             FileUtils.createParentDirectories(logFile.toFile())
@@ -376,18 +399,9 @@ class ServerRunner(
                 "%LOG_FILE%" to logFile.absolutePathString(),
             )
         )
+        val command = mutableListOf<String>()
 
-        if (!jvmArgs.options.isNullOrEmpty()) {
-            command.addAllWithPlaceholders(jvmArgs.options, placeholders)
-        }
-
-        if (!jvmArgs.arguments.isNullOrEmpty()) {
-            command.addAllWithPlaceholders(jvmArgs.arguments, placeholders)
-        }
-
-        //TODO exist check before save
-        GroupRuntime.Config.save(server.group, GroupRuntime(jvmArgs, null, null))
-
+        command.addAllWithPlaceholders(env.start.command, placeholders)
         val builder = ProcessBuilder()
             .command(command)
             .directory(serverDir ?: getServerDir(server, runtimeConfig))
@@ -399,43 +413,11 @@ class ServerRunner(
         builder.environment()["CONTROLLER_PUBSUB_HOST"] = this.args.pubSubGrpcHost
         builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
         builder.environment().putAll(server.toEnv())
-        if (jvmArgs.executable?.lowercase() != "screen")
+        if (!env.isScreen)
             builder.redirectOutput(logFile.toFile())
         return builder
     }
 
-    private fun crateDefaultJvmArguments(): JvmArguments {
-        val useScreen = ScreenCapabilities.isScreenAvailable()
-        val capabilities = if (useScreen) ScreenCapabilities.getScreenCapabilities() else ScreenCapabilities()
-
-        return when {
-            useScreen -> {
-                val screenOpts = mutableListOf("-dmS", "%SCREEN_NAME%", defaultExecutable)
-
-                if (capabilities.hasLogging && capabilities.hasLogFile) {
-                    screenOpts.addAll(0, listOf("-L", "-Logfile", "%LOG_FILE%"))
-                } else if (capabilities.hasLogging) {
-                    screenOpts.add(0, "-L")
-                }
-
-                JvmArguments(
-                    screenExecutable,
-                    screenOpts + defaultOptions,
-                    defaultArguments,
-                    "%SCREEN_NAME%"
-                )
-            }
-
-            else -> {
-                JvmArguments(
-                    defaultExecutable,
-                    defaultOptions,
-                    defaultArguments,
-                    null
-                )
-            }
-        }
-    }
 
     fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.IO).launch {

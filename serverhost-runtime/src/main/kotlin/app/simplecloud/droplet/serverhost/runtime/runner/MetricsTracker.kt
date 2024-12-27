@@ -11,7 +11,6 @@ import build.buf.gen.simplecloud.metrics.v1.metricMeta
 import org.apache.logging.log4j.LogManager
 import java.time.LocalDateTime
 import java.util.*
-import kotlin.math.log
 
 
 class MetricsTracker(
@@ -59,7 +58,7 @@ class MetricsTracker(
         try {
             pubSubClient.publish(MetricsEventNames.RECORD_METRIC, createMetricPlayers(server))
         } catch (e: Exception) {
-            logger.warn("Could not track metrics", e)
+            logger.warn("Could not track metrics: ${e.message}")
         }
     }
 
@@ -69,7 +68,7 @@ class MetricsTracker(
                 pubSubClient.publish(MetricsEventNames.RECORD_METRIC, usageMetric)
             }
         } catch (e: Exception) {
-            logger.warn("Could not track metrics", e)
+            logger.warn("Could not track metrics: ${e.message}")
         }
     }
 
