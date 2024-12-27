@@ -66,7 +66,7 @@ class MetricsTracker(
     private fun createMetricRamAndCpu(server: Server, process: ProcessHandle): List<Metric> {
         val cmd = Runtime.getRuntime()
             .exec(arrayOf("ps", "-wo", "%cpu,%mem", "--no-headers", "-p", process.pid().toString()))
-        val result = cmd.inputReader(Charsets.UTF_8).readLine().split("  ")
+        val result = cmd.inputReader(Charsets.UTF_8).readLine().split("   ")
         val cpu = result[0]
         val mem = result[1]
         return listOf(metric {
