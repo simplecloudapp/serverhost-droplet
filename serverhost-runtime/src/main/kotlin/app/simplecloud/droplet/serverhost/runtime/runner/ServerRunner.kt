@@ -14,7 +14,6 @@ import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderCo
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
-import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
 import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.await
@@ -32,11 +31,11 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 
 class ServerRunner(
-    private val configurator: ConfiguratorExecutor,
     private val templateProvider: TemplateProvider,
     private val serverHost: ServerHost,
     private val args: ServerHostStartCommand,
     private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
+    private val metricsTracker: MetricsTracker,
 ) {
 
     private val copyTemplateMutex = Mutex()
@@ -121,6 +120,8 @@ class ServerRunner(
                 this.playerCount = ping.players.online.toLong()
                 this.cloudProperties["motd"] = ping.description.text
             })
+            metricsTracker.trackPlayers(copiedServer)
+            metricsTracker.trackRamAndCpu(copiedServer, handle)
             return copiedServer
         } catch (e: Exception) {
             logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")

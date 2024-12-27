@@ -5,13 +5,14 @@ import app.simplecloud.droplet.api.auth.AuthCallCredentials
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
+import app.simplecloud.droplet.serverhost.runtime.runner.MetricsTracker
 import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
 import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
 import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
-import app.simplecloud.serverhost.configurator.ConfiguratorExecutor
+import app.simplecloud.pubsub.PubSubClient
 import build.buf.gen.simplecloud.controller.v1.ControllerDropletServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
@@ -32,7 +33,6 @@ class ServerHostRuntime(
 
     private val serverHost =
         ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
-    private val configurator = ConfiguratorExecutor()
     private val actionProvider =
         ActionProvider(
             Path.of(serverHostStartCommand.templateDefinitionPath.absolutePathString(), "actions")
@@ -49,12 +49,14 @@ class ServerHostRuntime(
     private val controllerDropletStub =
         ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub(controllerChannel)
             .withCallCredentials(authCallCredentials)
+    private val pubSubClient =
+        PubSubClient(serverHostStartCommand.pubSubGrpcHost, serverHostStartCommand.pubSubGrpcPort, authCallCredentials)
     private val runner = ServerRunner(
-        configurator,
         templateProvider,
         serverHost,
         serverHostStartCommand,
-        controllerStub
+        controllerStub,
+        MetricsTracker(pubSubClient)
     )
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()
