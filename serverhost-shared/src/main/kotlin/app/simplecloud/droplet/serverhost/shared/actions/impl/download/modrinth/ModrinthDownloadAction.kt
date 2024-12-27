@@ -152,9 +152,9 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
         cachePath: Path
     ) = withContext(Dispatchers.IO) {
         val destinationFile: Path = if (asFile) {
-            destinationPath.resolve(fileName)
-        } else {
             destinationPath
+        } else {
+            destinationPath.resolve(fileName)
         }
 
         val cacheFile = cachePath.resolve(fileName)
