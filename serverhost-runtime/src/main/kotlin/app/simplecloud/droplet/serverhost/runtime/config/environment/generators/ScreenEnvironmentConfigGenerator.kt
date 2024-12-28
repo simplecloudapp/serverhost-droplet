@@ -5,6 +5,7 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentStartConfig
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
+import app.simplecloud.droplet.serverhost.shared.hack.OS
 import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 
@@ -39,7 +40,7 @@ object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
         return EnvironmentConfig(
             name = getName(),
             isScreen = true,
-            useScreenStop = true,
+            useScreenStop = OS.get() == OS.LINUX,
             start = EnvironmentStartConfig(
                 command = command
             )

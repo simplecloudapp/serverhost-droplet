@@ -11,7 +11,7 @@ object ProcessDirectory {
     fun of(handle: ProcessHandle): Optional<Path> {
         val os = OS.get() ?: return Optional.empty()
         return when (os) {
-            OS.UNIX -> {
+            OS.LINUX, OS.MAC -> {
                 ofUnix(handle.pid())
             }
             OS.WINDOWS -> {

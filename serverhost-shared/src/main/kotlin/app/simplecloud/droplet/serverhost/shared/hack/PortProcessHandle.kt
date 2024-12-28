@@ -17,7 +17,7 @@ object PortProcessHandle {
     fun of(port: Int): Optional<ProcessHandle> {
         val os = OS.get() ?: return Optional.empty()
         val command = when (os) {
-            OS.UNIX -> arrayOf("sh", "-c", "lsof -i :$port | awk '{print \$2}'")
+            OS.LINUX, OS.MAC -> arrayOf("sh", "-c", "lsof -i :$port | awk '{print \$2}'")
             OS.WINDOWS -> arrayOf("cmd", "/c", "netstat -ano | findstr $port")
         }
 
@@ -37,7 +37,7 @@ object PortProcessHandle {
 
     private fun parseProcessIdOrNull(os: OS, line: String): Long? {
         return when (os) {
-            OS.UNIX -> line.toLongOrNull()
+            OS.LINUX, OS.MAC -> line.toLongOrNull()
             OS.WINDOWS -> {
                 val matcher = windowsPattern.matcher(line)
                 if (!matcher.matches()) {

@@ -2,7 +2,8 @@ package app.simplecloud.droplet.serverhost.shared.hack
 
 enum class OS(val names: List<String>) {
     WINDOWS(listOf("windows")),
-    UNIX(listOf("mac", "linux"));
+    LINUX(listOf("linux")),
+    MAC(listOf("mac"));
 
     companion object {
         fun get(): OS? {

@@ -26,14 +26,9 @@ interface ProcessInfo {
 
         fun of(pid: Long): ProcessInfo {
             return when(OS.get()) {
-                OS.WINDOWS -> {
-                    WindowsProcessInfo(pid)
-                }
-
-                OS.UNIX -> {
-                    UnixProcessInfo(pid)
-                }
-
+                OS.WINDOWS -> WindowsProcessInfo(pid)
+                OS.LINUX -> UnixProcessInfo(pid)
+                OS.MAC -> MacProcessInfo(pid)
                 null -> throw IllegalArgumentException("Unknown OS")
             }
         }
