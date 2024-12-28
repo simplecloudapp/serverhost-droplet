@@ -3,13 +3,12 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
+import app.simplecloud.droplet.serverhost.runtime.process.ProcessFinder
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
-import app.simplecloud.droplet.serverhost.runtime.util.ProcessDirectory
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
@@ -28,10 +27,8 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
-import kotlin.math.log
 
 class ServerRunner(
     private val templateProvider: TemplateProvider,
@@ -82,9 +79,9 @@ class ServerRunner(
 
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
         // server to respond to pings though)
-        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.let { findExecutable(it) }
+        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.getExecutable()
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
-            val realProcess = executable?.let { exe -> getRealProcessParent(server, it, exe).orElse(null) }
+            val realProcess = ProcessFinder.findHighestProcessParent(getServerDir(server).toPath(), it).orElse(null)
             if (realProcess != null && serverToProcessHandle[server] != realProcess) {
                 logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
                 serverToProcessHandle[server] = realProcess
@@ -114,7 +111,10 @@ class ServerRunner(
                 this.cloudProperties["motd"] = ping.description.text
             })
             metricsTracker.trackPlayers(copiedServer)
-            metricsTracker.trackRamAndCpu(copiedServer, handle)
+            metricsTracker.trackRamAndCpu(
+                copiedServer,
+                ProcessFinder.findHighestExecutableProcess(handle, executable ?: "unknown").get()
+            )
             return copiedServer
         } catch (e: Exception) {
             logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
@@ -128,7 +128,8 @@ class ServerRunner(
     }
 
     private fun getServerDir(server: Server): File {
-        return getServerDir(server, runtimeRepository.get(server.group))
+        return if (server.properties.containsKey("server-dir")) Path.of(server.properties["server-dir"]!!)
+            .toFile() else getServerDir(server, runtimeRepository.get(server.group))
     }
 
     private fun getServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
@@ -146,10 +147,6 @@ class ServerRunner(
             args.logsPath.absolutePathString(),
             "${server.group}-${server.numericalId}-${server.uniqueId}.log"
         )
-    }
-
-    private fun isServerDir(server: Server, path: Path): Boolean {
-        return path == getServerDir(server).toPath()
     }
 
     fun startServer(server: Server): Boolean {
@@ -182,7 +179,16 @@ class ServerRunner(
                 builder.directory().mkdirs()
             }
             val process = builder.start()
-            serverToProcessHandle[server] = process.toHandle()
+            val updatedServer = Server.fromDefinition(server.toDefinition().copy {
+                cloudProperties["server-dir"] = serverDir?.absolutePath ?: getServerDir(server).absolutePath
+            })
+            CoroutineScope(Dispatchers.IO).launch {
+                controllerStub.updateServer(updateServerRequest {
+                    this.server = updatedServer.toDefinition()
+                    this.deleted = false
+                })
+            }
+            serverToProcessHandle[updatedServer] = process.toHandle()
             logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
             return true
         } catch (e: Exception) {
@@ -274,9 +280,13 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
-        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.let { findExecutable(it) }
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
-            ?.let { executable?.let { exe -> getRealProcessParent(server, it, exe).orElse(null) } }
+            ?.let {
+                    ProcessFinder.findHighestProcessParent(
+                        getServerDir(server).toPath(),
+                        it
+                    ).orElse(null)
+            }
 
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
@@ -289,48 +299,6 @@ class ServerRunner(
         serverToProcessHandle[server] = handle
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully reattached on PID ${handle.pid()}")
         return true
-    }
-
-    /**
-     * This method is intended solve a bug where servers can not stop correctly.
-     * This works by searching for the highest parent process of a [ProcessHandle]
-     * which is a process that has a server dir as execution environment.
-     */
-    private fun getRealProcessParent(
-        registeredServer: Server,
-        handle: ProcessHandle,
-        executable: String
-    ): Optional<ProcessHandle> {
-        val path = ProcessDirectory.of(handle).orElse(getServerDir(registeredServer).toPath())
-
-        if (isServerDir(registeredServer, path)) {
-            return Optional.of(handle)
-        }
-
-        val parent = handle.parent().orElse(null)
-        if (parent == null || parent.info().command().orElse(null)
-                ?.startsWith(executable) == false
-        ) {
-            return Optional.empty()
-        }
-
-        return getRealProcessParent(registeredServer, parent, executable)
-    }
-
-    private fun findExecutable(env: EnvironmentConfig): String? {
-        if (env.isDocker) return null
-        var index = 0
-        if (env.isScreen) {
-            while (index < (env.start?.command?.size ?: 0)) {
-                val current = env.start?.command?.get(index) ?: ""
-                if (current == "-dmS" || current == "-S") {
-                    return env.start?.command?.get(index + 2) ?: ""
-                }
-                index++
-            }
-            return null
-        }
-        return env.start?.command?.get(0)
     }
 
     private fun createRuntimePlaceholders(server: Server): MutableMap<String, String> {
