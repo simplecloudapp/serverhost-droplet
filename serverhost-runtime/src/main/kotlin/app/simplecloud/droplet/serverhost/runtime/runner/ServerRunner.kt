@@ -110,11 +110,7 @@ class ServerRunner(
                 this.playerCount = ping.players.online.toLong()
                 this.cloudProperties["motd"] = ping.description.text
             })
-            metricsTracker.trackPlayers(copiedServer)
-            metricsTracker.trackRamAndCpu(
-                copiedServer,
-                ProcessFinder.findHighestExecutableProcess(handle, executable ?: "unknown").get()
-            )
+            trackMetrics(copiedServer, handle, executable)
             return copiedServer
         } catch (e: Exception) {
             logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
@@ -124,6 +120,27 @@ class ServerRunner(
                 return null
             }
             return server
+        }
+    }
+
+    private fun trackMetrics(
+        copiedServer: Server,
+        handle: ProcessHandle,
+        executable: String?
+    ) {
+        try {
+            metricsTracker.trackPlayers(copiedServer)
+        } catch (e: Exception) {
+            logger.warn("Failed to track player metrics: ${e.message}")
+        }
+
+        try {
+            metricsTracker.trackRamAndCpu(
+                copiedServer,
+                ProcessFinder.findHighestExecutableProcess(handle, executable ?: "unknown").get()
+            )
+        } catch (e: Exception) {
+            logger.warn("Failed to track ram and cpu metrics: ${e.message}")
         }
     }
 
@@ -282,10 +299,10 @@ class ServerRunner(
         }
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
             ?.let {
-                    ProcessFinder.findHighestProcessParent(
-                        getServerDir(server).toPath(),
-                        it
-                    ).orElse(null)
+                ProcessFinder.findHighestProcessParent(
+                    getServerDir(server).toPath(),
+                    it
+                ).orElse(null)
             }
 
         if (handle == null) {
