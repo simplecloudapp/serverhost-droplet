@@ -79,9 +79,14 @@ class ServerRunner(
 
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
         // server to respond to pings though)
-        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.getExecutable()
+        val executable = environmentsRepository.get(runtimeRepository.get(server.group))
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
-            val realProcess = ProcessFinder.findHighestProcessParent(getServerDir(server).toPath(), it).orElse(null)
+            val realProcess = executable?.getRealExecutable()?.let { exe ->
+                ProcessFinder.findHighestProcessWorkingDir(
+                    getServerDir(server).toPath(), it,
+                    exe
+                ).orElse(null)
+            }
             if (realProcess != null && serverToProcessHandle[server] != realProcess) {
                 logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
                 serverToProcessHandle[server] = realProcess
@@ -110,7 +115,7 @@ class ServerRunner(
                 this.playerCount = ping.players.online.toLong()
                 this.cloudProperties["motd"] = ping.description.text
             })
-            trackMetrics(copiedServer, handle, executable)
+            trackMetrics(copiedServer, handle, executable?.getExecutable())
             return copiedServer
         } catch (e: Exception) {
             logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
@@ -166,7 +171,7 @@ class ServerRunner(
         )
     }
 
-    fun startServer(server: Server): Boolean {
+    suspend fun startServer(server: Server): Boolean {
         logger.info("Starting server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
 
         if (containsServer(server)) {
@@ -183,11 +188,14 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group has no assigned configurator.")
             return false
         }
+        var ctx: YamlActionContext?
+        copyTemplateMutex.withLock {
+            ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
+        }
 
-        val ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
         var serverDir: File? = null
         if (ctx != null) {
-            serverDir = getServerDir(ctx)
+            serverDir = getServerDir(ctx!!)
         }
         try {
             val builder = buildProcess(serverDir, server, runtimeConfig)
@@ -195,7 +203,9 @@ class ServerRunner(
             if (!builder.directory().exists()) {
                 builder.directory().mkdirs()
             }
-            val process = builder.start()
+            val process = withContext(Dispatchers.IO) {
+                builder.start()
+            }
             val updatedServer = Server.fromDefinition(server.toDefinition().copy {
                 cloudProperties["server-dir"] = serverDir?.absolutePath ?: getServerDir(server).absolutePath
             })
@@ -297,12 +307,16 @@ class ServerRunner(
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
+        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.getRealExecutable()
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
             ?.let {
-                ProcessFinder.findHighestProcessParent(
-                    getServerDir(server).toPath(),
-                    it
-                ).orElse(null)
+                executable?.let { exe ->
+                    ProcessFinder.findHighestProcessWorkingDir(
+                        getServerDir(server).toPath(),
+                        it,
+                        exe
+                    ).orElse(null)
+                }
             }
 
         if (handle == null) {
@@ -335,6 +349,7 @@ class ServerRunner(
 
     private fun terminateScreenSession(pid: Long) {
         try {
+            logger.info("Terminating screen $pid")
             val process = ProcessBuilder("screen", "-S", pid.toString(), "-X", "quit")
                 .redirectErrorStream(true)
                 .start()

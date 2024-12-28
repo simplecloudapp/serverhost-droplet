@@ -28,4 +28,9 @@ data class EnvironmentConfig(
         }
         return start?.command?.get(0)
     }
+
+    fun getRealExecutable(): String? {
+        return start?.command?.get(0)
+    }
+
 }
