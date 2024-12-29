@@ -14,9 +14,9 @@ class UnixProcessInfo(private val pid: Long) : ProcessInfo {
         cmd.inputReader(Charsets.UTF_8).use { reader ->
             reader.readLines().forEach { line ->
                 val resultString = line.trim()
-                val result = resultString.split("  ")
-                cpu = result[0].toDouble()
-                mem = result[1].toDouble()
+                val result = resultString.split(" ")
+                cpu = result.firstOrNull()?.toDouble() ?: 0.0
+                mem = result.lastOrNull()?.toDouble() ?: 0.0
             }
         }
         return Pair(cpu, mem)
