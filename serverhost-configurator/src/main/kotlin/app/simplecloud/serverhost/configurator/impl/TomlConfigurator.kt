@@ -34,6 +34,7 @@ object TomlConfigurator : Configurator<MutableMap<String, Any>> {
             config.set(key, value)
         }
         config.save()
+        config.close()
     }
 
     private fun mergeMaps(first: Map<String, Any>, second: Map<String, Any>): Map<String, Any> {
