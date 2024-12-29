@@ -60,6 +60,7 @@ class MetricsTracker(
         return metric {
             metricType = "SERVER_USAGE_PLAYERS"
             metricValue = server.playerCount
+            time = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())
             meta.addAll(createMeta(server))
         }
     }
