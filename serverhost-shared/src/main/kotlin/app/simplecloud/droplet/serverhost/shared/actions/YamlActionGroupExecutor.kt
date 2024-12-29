@@ -21,9 +21,8 @@ open class YamlActionGroupExecutor(private val context: YamlActionContext, priva
         return exceptions
     }
 
-    protected fun <T> exec(data: Any, ctx: YamlActionContext, action: YamlAction<T>) {
-        @Suppress("UNCHECKED_CAST")
-        action.exec(ctx, data as T)
+    protected fun exec(data: Any, ctx: YamlActionContext, action: YamlAction<*>) {
+        action.javaClass.getMethod("exec", YamlActionContext::class.java, Any::class.java).invoke(action, ctx, data)
     }
 }
 
