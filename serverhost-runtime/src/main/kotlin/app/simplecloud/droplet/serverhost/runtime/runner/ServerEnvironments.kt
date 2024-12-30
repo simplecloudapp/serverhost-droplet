@@ -31,10 +31,16 @@ class ServerEnvironments(
         default
     )
 
+    /**
+     * Gets the environment a server is running on or null if the server is not running in any environment
+     */
     fun of(server: Server): ServerEnvironment? {
         return of(server.uniqueId)
     }
 
+    /**
+     * Gets the environment a server is running on or null if the server is not running in any environment
+     */
     fun of(uniqueId: String): ServerEnvironment? {
         return envs.firstOrNull {
             it.getServer(uniqueId)?.let { server ->
@@ -48,6 +54,9 @@ class ServerEnvironments(
         return envs
     }
 
+    /**
+     * Returns the initial environment used for the server
+     */
     fun firstFor(server: Server): ServerEnvironment {
         return envs.firstOrNull { it.getEnvironment(server)?.let { env -> it.appliesFor(env) } ?: false } ?: default
     }
