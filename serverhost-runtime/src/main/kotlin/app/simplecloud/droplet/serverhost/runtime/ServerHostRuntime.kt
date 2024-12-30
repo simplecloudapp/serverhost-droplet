@@ -6,8 +6,9 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
+import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.runner.MetricsTracker
-import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
+import app.simplecloud.droplet.serverhost.runtime.runner.ServerEnvironments
 import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
@@ -53,13 +54,14 @@ class ServerHostRuntime(
             .withCallCredentials(authCallCredentials)
     private val pubSubClient =
         PubSubClient(serverHostStartCommand.pubSubGrpcHost, serverHostStartCommand.pubSubGrpcPort, authCallCredentials)
-    private val runner = ServerRunner(
+    private val environments = ServerEnvironments(
         templateProvider,
         serverHost,
         serverHostStartCommand,
         controllerStub,
         MetricsTracker(pubSubClient),
-        environmentsRepository
+        environmentsRepository,
+        GroupRuntimeDirectory()
     )
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()
@@ -69,11 +71,10 @@ class ServerHostRuntime(
         startGrpcServer()
         attach()
         resourceCopier.copyAll("copy")
-        runner.startServerStateChecker()
         actionProvider.load()
         templateProvider.load()
         startFileSystemWatcher()
-
+        environments.getAll().forEach { env -> env.startServerStateChecker() }
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
                 server.shutdown()
@@ -117,7 +118,7 @@ class ServerHostRuntime(
             serverHostStartCommand.grpcHost,
             serverHostStartCommand.authorizationPort
         )
-            .addService(ServerHostService(serverHost, runner, templateSnapshotCache, serverHostStartCommand))
+            .addService(ServerHostService(serverHost, environments, templateSnapshotCache, serverHostStartCommand))
             .build()
     }
 

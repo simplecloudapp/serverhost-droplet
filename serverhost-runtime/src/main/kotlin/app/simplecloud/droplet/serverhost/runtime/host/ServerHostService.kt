@@ -3,23 +3,17 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
-import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.ServerRunner
+import app.simplecloud.droplet.serverhost.runtime.runner.ServerEnvironments
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
-import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
-import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
-import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
 import build.buf.gen.simplecloud.controller.v1.*
 import com.google.protobuf.ByteString
 import io.grpc.Status
 import io.grpc.StatusException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.withContext
-import org.apache.logging.log4j.LogManager
 import java.io.FileInputStream
 import java.io.FileWriter
 import java.nio.file.Files
@@ -28,12 +22,10 @@ import kotlin.io.path.*
 
 class ServerHostService(
     private val serverHost: ServerHost,
-    private val runner: ServerRunner,
+    private val envs: ServerEnvironments,
     private val cache: FileSystemSnapshotCache,
     private val args: ServerHostStartCommand,
 ) : ServerHostServiceGrpcKt.ServerHostServiceCoroutineImplBase() {
-
-    private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
 
     override suspend fun startServer(request: ServerHostStartServerRequest): ServerDefinition {
         val group = Group.fromDefinition(request.group)
@@ -45,7 +37,8 @@ class ServerHostService(
             this.serverIp = serverHost.host
         })
         try {
-            val started = runner.startServer(server)
+            val env = envs.firstFor(server)
+            val started = env.startServer(server)
             if (!started) {
                 throw StatusException(Status.INVALID_ARGUMENT.withDescription("Group not supported by this ServerHost."))
             }
@@ -56,7 +49,9 @@ class ServerHostService(
     }
 
     override suspend fun stopServer(request: ServerDefinition): ServerDefinition {
-        val stopped = runner.stopServer(Server.fromDefinition(request))
+        val env =
+            envs.of(request.uniqueId) ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
+        val stopped = env.stopServer(Server.fromDefinition(request))
         if (!stopped) {
             throw StatusException(Status.INTERNAL.withDescription("Could not stop server"))
         }
@@ -65,39 +60,30 @@ class ServerHostService(
 
     override suspend fun reattachServer(request: ServerDefinition): ServerDefinition {
         val server = Server.fromDefinition(request)
-        val success = runner.reattachServer(server)
+        val env =
+            envs.firstFor(server)
+        val success = env.reattachServer(server)
         if (!success) {
             throw StatusException(Status.INTERNAL.withDescription("Could not reattach server"))
         }
-        return server.toDefinition()
+        return request
     }
 
     override suspend fun executeCommand(request: ServerHostServerExecuteCommandRequest): ServerHostServerExecuteCommandResponse {
-        val process = runner.getProcess(request.serverId)
-            ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
-        val streamer = ScreenCommandExecutor(process.pid())
-        if (!streamer.isScreen()) throw StatusException(Status.UNAVAILABLE.withDescription("Only servers started with screen have access to logs."))
-        streamer.sendCommand(request.command)
+        val env =
+            envs.of(request.serverId) ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
+        val success = env.executeCommand(env.getServer(request.serverId)!!, request.command)
+        if (!success) throw StatusException(Status.INTERNAL.withDescription("Could not send command."))
         return serverHostServerExecuteCommandResponse {}
     }
 
     override fun streamServerLogs(request: ServerHostStreamServerLogsRequest): Flow<ServerHostStreamServerLogsResponse> {
-        var configurer: ScreenConfigurer? = null
+        val env =
+            envs.of(request.serverId) ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
         try {
-            val server = runner.getServer(request.serverId)
-                ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
-            val process = runner.getProcess(request.serverId)
-            if (process != null) {
-                configurer = ScreenConfigurer(process.pid())
-                configurer.setLogsFlush(0)
-                logger.warn("Screen streaming for server ${server.group}-${server.numericalId} (${request.serverId}) not available, log stream will be slower.")
-            }
-            val fileStreamer = DefaultLogStreamer(runner.getServerLogFile(server))
-            return fileStreamer.readScreenLogs().onCompletion { configurer?.setLogsFlush(10) }
+            return env.streamLogs(env.getServer(request.serverId)!!)
         } catch (e: Exception) {
-            configurer?.setLogsFlush(10)
-            logger.error("Failed to stream server logs", e)
-            throw StatusException(Status.INTERNAL.withDescription("Failed to stream server logs: ${e.message}"))
+            throw StatusException(Status.INTERNAL.withDescription("Could not stream logs: ${e.message}"))
         }
     }
 

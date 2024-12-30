@@ -3,6 +3,7 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
+import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
@@ -15,8 +16,13 @@ import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderCo
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
+import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
+import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
+import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
 import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,17 +36,17 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 
-class ServerRunner(
+class DefaultServerEnvironment(
     private val templateProvider: TemplateProvider,
     private val serverHost: ServerHost,
     private val args: ServerHostStartCommand,
     private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
     private val metricsTracker: MetricsTracker,
     private val environmentsRepository: EnvironmentConfigRepository,
-) {
+    override val runtimeRepository: GroupRuntimeDirectory,
+) : ServerEnvironment(runtimeRepository, environmentsRepository) {
 
     private val copyTemplateMutex = Mutex()
-    private val runtimeRepository = GroupRuntimeDirectory()
 
     private val stopTries = mutableMapOf<String, Int>()
     private val maxGracefulTries = 3
@@ -57,7 +63,7 @@ class ServerRunner(
         return serverToProcessHandle.any { it.key.uniqueId == uniqueId }
     }
 
-    fun getServer(uniqueId: String): Server? {
+    override fun getServer(uniqueId: String): Server? {
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
@@ -79,7 +85,7 @@ class ServerRunner(
 
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
         // server to respond to pings though)
-        val executable = environmentsRepository.get(runtimeRepository.get(server.group))
+        val executable = getEnvironment(server)
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)?.let {
             val realProcess = executable?.getRealExecutable()?.let { exe ->
                 ProcessFinder.findHighestProcessWorkingDir(
@@ -164,14 +170,14 @@ class ServerRunner(
         return File(basicUrl)
     }
 
-    fun getServerLogFile(server: Server): Path {
+    private fun getServerLogFile(server: Server): Path {
         return Paths.get(
             args.logsPath.absolutePathString(),
             "${server.group}-${server.numericalId}-${server.uniqueId}.log"
         )
     }
 
-    suspend fun startServer(server: Server): Boolean {
+    override suspend fun startServer(server: Server): Boolean {
         logger.info("Starting server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
 
         if (containsServer(server)) {
@@ -235,7 +241,7 @@ class ServerRunner(
             else
                 logger.error("Template ${server.properties["template-id"] ?: ""} of group ${server.group} was not found!")
         }
-        return null;
+        return null
     }
 
     private fun getServerDir(ctx: YamlActionContext): File? {
@@ -244,7 +250,7 @@ class ServerRunner(
         return Paths.get(placeholders.parse(dir)).toFile()
     }
 
-    suspend fun stopServer(server: Server): Boolean {
+    override suspend fun stopServer(server: Server): Boolean {
         logger.info("Stopping server ${server.uniqueId} of group ${server.group} (#${server.numericalId})")
         val stopped = stopServer(server.uniqueId, stopTries.getOrDefault(server.uniqueId, 0) >= maxGracefulTries)
         if (!stopped) return false
@@ -271,9 +277,7 @@ class ServerRunner(
             return false
         }
 
-        val load = runtimeRepository.get(server.group)
-
-        val env = environmentsRepository.get(load)
+        val env = getEnvironment(server)
         if (env != null && env.useScreenStop) {
             terminateScreenSession(process.pid())
         } else {
@@ -295,19 +299,20 @@ class ServerRunner(
         }
     }
 
-    fun getProcess(uniqueId: String): ProcessHandle? {
+    private fun getProcess(uniqueId: String): ProcessHandle? {
         return serverToProcessHandle.getOrDefault(
             serverToProcessHandle.keys.firstOrNull { it.uniqueId == uniqueId },
             null
         )
     }
 
-    fun reattachServer(server: Server): Boolean {
+
+    override fun reattachServer(server: Server): Boolean {
         if (containsServer(server.uniqueId)) {
             logger.error("Server ${server.uniqueId} of group ${server.group} is already running.")
             return true
         }
-        val executable = environmentsRepository.get(runtimeRepository.get(server.group))?.getRealExecutable()
+        val executable = getEnvironment(server)?.getRealExecutable()
         val handle = PortProcessHandle.of(server.port.toInt()).orElse(null)
             ?.let {
                 executable?.let { exe ->
@@ -322,7 +327,6 @@ class ServerRunner(
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
             executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
-            FileUtils.deleteDirectory(getServerDir(server))
             PortProcessHandle.removePreBind(server.port.toInt(), true)
             return false
         }
@@ -330,6 +334,37 @@ class ServerRunner(
         serverToProcessHandle[server] = handle
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully reattached on PID ${handle.pid()}")
         return true
+    }
+
+    override fun executeCommand(server: Server, command: String): Boolean {
+        if (getEnvironment(server)?.isScreen != true) return false
+        val process = getProcess(server.uniqueId)
+            ?: return false
+        val streamer = ScreenCommandExecutor(process.pid())
+        streamer.sendCommand(command)
+        return true
+    }
+
+    override fun streamLogs(server: Server): Flow<ServerHostStreamServerLogsResponse> {
+        var configurer: ScreenConfigurer? = null
+        try {
+            val process = getProcess(server.uniqueId)
+            if (process != null) {
+                configurer = ScreenConfigurer(process.pid())
+                configurer.setLogsFlush(0)
+                logger.warn("Screen streaming for server ${server.group}-${server.numericalId} (${server.uniqueId}) not available, log stream will be slower.")
+            }
+            val fileStreamer = DefaultLogStreamer(getServerLogFile(server))
+            return fileStreamer.readScreenLogs().onCompletion { configurer?.setLogsFlush(10) }
+        } catch (e: Exception) {
+            configurer?.setLogsFlush(10)
+            logger.error("Failed to stream server logs", e)
+            throw e
+        }
+    }
+
+    override fun appliesFor(env: EnvironmentConfig): Boolean {
+        return env.enabled && env.start?.command != null
     }
 
     private fun createRuntimePlaceholders(server: Server): MutableMap<String, String> {
@@ -419,7 +454,7 @@ class ServerRunner(
     }
 
 
-    fun startServerStateChecker(): Job {
+    override fun startServerStateChecker(): Job {
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 serverToProcessHandle.keys.toList().forEach {
