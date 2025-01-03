@@ -29,9 +29,11 @@ object TomlConfigurator : Configurator<MutableMap<String, Any>> {
     override fun save(data: MutableMap<String, Any>, file: File) {
         val existing = load(file) ?: mutableMapOf()
         val mergedMap = mergeMaps(existing, data)
-        val config = FileConfig.of(file)
-        mergedMap.forEach { (key, value) ->
-            config.set(key, value)
+        val config = FileConfig.builder(file).sync().build()
+        config.bulkUpdate {
+            mergedMap.forEach { (key, value) ->
+                it.set(key, value)
+            }
         }
         config.save()
         config.close()
