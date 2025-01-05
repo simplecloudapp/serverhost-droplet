@@ -9,7 +9,9 @@ import build.buf.gen.simplecloud.metrics.v1.Metric
 import build.buf.gen.simplecloud.metrics.v1.MetricMeta
 import build.buf.gen.simplecloud.metrics.v1.metric
 import build.buf.gen.simplecloud.metrics.v1.metricMeta
+import com.sun.management.OperatingSystemMXBean
 import org.apache.logging.log4j.LogManager
+import java.lang.management.ManagementFactory
 import java.time.LocalDateTime
 
 
@@ -18,6 +20,8 @@ class MetricsTracker(
 ) {
 
     private val logger = LogManager.getLogger(MetricsTracker::class.java)
+    private val osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean::class.java)
+    private val osRam = osBean.totalMemorySize
 
     private fun createMeta(server: Server): List<MetricMeta> {
         return listOf(
@@ -55,6 +59,16 @@ class MetricsTracker(
         }
     }
 
+    fun trackRamAndCpu(server: Server, ram: Long, cpu: Long) {
+        try {
+            createMetricRamAndCpu(server, ram, cpu).forEach { usageMetric ->
+                pubSubClient.publish(MetricsEventNames.RECORD_METRIC, usageMetric)
+            }
+        } catch (e: Exception) {
+            logger.warn("Could not track metrics: ${e.message}")
+        }
+    }
+
 
     private fun createMetricPlayers(server: Server): Metric {
         return metric {
@@ -67,14 +81,18 @@ class MetricsTracker(
 
     private fun createMetricRamAndCpu(server: Server, process: ProcessHandle): List<Metric> {
         val ramAndCpu = ProcessInfo.of(process).getRamAndCpuPercent()
+        return createMetricRamAndCpu(server, (ramAndCpu.first * osRam).toLong(), (ramAndCpu.second * 1000L).toLong())
+    }
+
+    private fun createMetricRamAndCpu(server: Server, ram: Long, cpu: Long): List<Metric> {
         return listOf(metric {
             metricType = "SERVER_USAGE_CPU"
-            metricValue = (ramAndCpu.first * 1000L).toLong()
+            metricValue = ram
             time = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())
             meta.addAll(createMeta(server))
         }, metric {
             metricType = "SERVER_USAGE_RAM"
-            metricValue = (ramAndCpu.second * 1000L).toLong()
+            metricValue = cpu
             time = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())
             meta.addAll(createMeta(server))
         })

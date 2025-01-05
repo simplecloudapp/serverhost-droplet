@@ -67,22 +67,18 @@ class DefaultServerEnvironment(
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
-    private fun updateServerCache(uniqueId: String, updated: Server) {
+    override fun updateServerCache(uniqueId: String, server: Server) {
         val key = serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
         if (key == null) {
-            logger.warn("Server ${updated.group}-${updated.numericalId} could not be updated in cache")
+            logger.warn("Server ${server.group}-${server.numericalId} could not be updated in cache")
             return
         }
         val value = serverToProcessHandle[key]!!
         serverToProcessHandle.remove(key)
-        serverToProcessHandle[updated] = value
+        serverToProcessHandle[server] = value
     }
 
-    private suspend fun updateServer(server: Server?): Server? {
-        if (server == null) {
-            return null
-        }
-
+    override suspend fun updateServer(server: Server): Server? {
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
         // server to respond to pings though)
         val executable = getEnvironment(server)
@@ -453,34 +449,10 @@ class DefaultServerEnvironment(
         return builder
     }
 
-
-    override fun startServerStateChecker(): Job {
-        return CoroutineScope(Dispatchers.IO).launch {
-            while (isActive) {
-                serverToProcessHandle.keys.toList().forEach {
-
-                    var delete = false
-                    var server = it
-                    try {
-                        val updated = updateServer(it)
-                        if (updated == null) delete = true
-                        else {
-                            server = updated
-                            updateServerCache(updated.uniqueId, updated)
-                        }
-                        controllerStub.updateServer(
-                            UpdateServerRequest.newBuilder()
-                                .setServer(server.toDefinition())
-                                .setDeleted(delete).build()
-                        )
-                    } catch (e: Exception) {
-                        logger.error("An error occurred whilst updating the server:", e)
-                    }
-                }
-                delay(5000L)
-            }
-        }
+    override fun getServers(): List<Server> {
+        return serverToProcessHandle.keys.toList()
     }
+
 
     private fun MutableList<String>.addAllWithPlaceholders(commands: List<String>, placeholders: Map<String, String>) {
         addAll(commands.map {

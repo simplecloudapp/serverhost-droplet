@@ -4,7 +4,6 @@ import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import build.buf.gen.simplecloud.controller.v1.ServerHostStreamServerLogsResponse
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 
 abstract class ServerEnvironment(
@@ -20,6 +19,11 @@ abstract class ServerEnvironment(
      * Stops a [Server] and returns true if the server is successfully stopped
      */
     abstract suspend fun stopServer(server: Server): Boolean
+
+    /**
+     * Updates a [Server] and returns the updated server or null if the server does not exist
+     */
+    abstract suspend fun updateServer(server: Server): Server?
 
     /**
      * Get a [Server] by unique id (returns null if the server is not running on this environment)
@@ -47,9 +51,14 @@ abstract class ServerEnvironment(
     abstract fun appliesFor(env: EnvironmentConfig): Boolean
 
     /**
-     * Starts the server update checker. This will stop offline servers and update servers by the ping response of the server.
+     * Returns all servers currently known to this environment.
      */
-    abstract fun startServerStateChecker(): Job
+    abstract fun getServers(): List<Server>
+
+    /**
+     * Updates the cached server for this environment.
+     */
+    abstract fun updateServerCache(uniqueId: String, server: Server)
 
     fun getEnvironment(server: Server): EnvironmentConfig? {
         return environmentRepository.get(runtimeRepository.get(server.group))

@@ -4,6 +4,6 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data class DockerStartConfig(
-    val image: String = "",
-    val containerId: String = "",
+    val exposedPort: Int = 25565,
+    val envMappings: Map<String, String> = mapOf("forwarding-secret" to "FORWARDING_SECRET"),
 )

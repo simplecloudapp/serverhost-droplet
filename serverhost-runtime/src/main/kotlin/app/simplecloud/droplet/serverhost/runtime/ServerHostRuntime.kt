@@ -74,7 +74,7 @@ class ServerHostRuntime(
         actionProvider.load()
         templateProvider.load()
         startFileSystemWatcher()
-        environments.getAll().forEach { env -> env.startServerStateChecker() }
+        environments.startServerStateChecker()
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
                 server.shutdown()

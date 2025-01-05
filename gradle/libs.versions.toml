@@ -9,6 +9,7 @@ simplecloud-controller = "0.0.30-dev.e5b5ab8"
 simplecloud-pubsub = "1.0.4"
 simplecloud-metrics = "1.0.0"
 commons-io = "2.15.1"
+docker-java = "3.4.1"
 configurate = "4.1.2"
 clikt = "5.0.1"
 toml4j = "0.7.2"
@@ -50,12 +51,19 @@ night-config-toml = { module = "com.electronwill.night-config:toml", version.ref
 
 ktor-cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor-cio" }
 
+docker-java = { module = "com.github.docker-java:docker-java", version.ref = "docker-java" }
+docker-java-transport-http = { module = "com.github.docker-java:docker-java-transport-httpclient5", version.ref = "docker-java" }
+
 [bundles]
 log4j = [
     "log4j-core",
     "log4j-api",
     "log4j-slf4j",
     "slf4j-api"
+]
+docker = [
+    "docker-java",
+    "docker-java-transport-http"
 ]
 configurate = [
     "configurate-yaml",
