@@ -5,6 +5,7 @@ import app.simplecloud.droplet.serverhost.shared.actions.impl.codec.compress.Com
 import app.simplecloud.droplet.serverhost.shared.actions.impl.codec.decompress.DecompressAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.conditional.ConditionalAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.DownloadAction
+import app.simplecloud.droplet.serverhost.shared.actions.impl.download.GithubDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.modrinth.ModrinthDownloadAction
 
 //All valid action types are listed here.
@@ -15,6 +16,7 @@ enum class YamlActionTypes(val action: YamlAction<*>) {
     INFER(InferFromServerAction),
     CONFIGURATE(ConfigurateAction),
     DOWNLOAD(DownloadAction),
+    GITHUB_DOWNLOAD(GithubDownloadAction),
     MODRINTH_DOWNLOAD(ModrinthDownloadAction),
     COMPRESS(CompressAction),
     DECOMPRESS(DecompressAction),
