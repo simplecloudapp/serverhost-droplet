@@ -46,7 +46,7 @@ object GithubDownloadAction : YamlAction<GithubDownloadActionData> {
 
     private val logger = LogManager.getLogger(GithubDownloadAction::class.java)
 
-    private val gitHub = connectToGitHub()
+    private val globalGitHub = connectToGitHub()
 
     override fun exec(ctx: YamlActionContext, data: GithubDownloadActionData) {
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx)
@@ -56,23 +56,29 @@ object GithubDownloadAction : YamlAction<GithubDownloadActionData> {
 
         logger.info("Try to download asset ${data.assetName} from repository ${data.url}")
 
-        val asset = getReleaseAsset(data.url, data.assetName, data.releaseTag)
+        val gitHub = if (data.token == null) {
+            this.globalGitHub
+        } else {
+            connectToGitHub(data.token)
+        }
+
+        val asset = getReleaseAsset(gitHub, data.url, data.assetName, data.releaseTag)
         val outputFile = File(outputFilePath, asset.name)
         downloadAsset(asset.browserDownloadUrl, outputFile)
     }
 
     override fun getDataType() = GithubDownloadActionData::class.java
 
-    private fun getReleaseAsset(url: String, assetName: String, releaseTag: String?): GHAsset {
-        val releaseTag = getReleaseTag(url, releaseTag)
+    private fun getReleaseAsset(gitHub: GitHub, url: String, assetName: String, releaseTag: String?): GHAsset {
+        val releaseTag = getReleaseTag(gitHub, url, releaseTag)
         this.logger.info("Release selected for $url: ${releaseTag.name} (${releaseTag.tagName})")
         return releaseTag.listAssets().firstOrNull { it.name == assetName }
             ?: throw IllegalStateException("failed to find $assetName in release ${releaseTag.tagName}")
     }
 
-    private fun getReleaseTag(url: String, releaseTag: String?): GHRelease {
+    private fun getReleaseTag(gitHub: GitHub, url: String, releaseTag: String?): GHRelease {
         val repositoryPath = extractRepoPathFromUrl(url)
-        val repository = this.gitHub.getRepository(repositoryPath)
+        val repository = gitHub.getRepository(repositoryPath)
         if (releaseTag == null) {
             return repository.latestRelease
                 ?: throw IllegalStateException("failed to find release for repository $repositoryPath")
@@ -88,12 +94,17 @@ object GithubDownloadAction : YamlAction<GithubDownloadActionData> {
         return "${pathSegments[0]}/${pathSegments[1]}"
     }
 
-    private fun connectToGitHub(): GitHub {
+    private fun connectToGitHub(token: String? = null): GitHub {
         logger.info("Connecting to GitHub...")
         val builder = GitHubBuilder()
             .withConnector(OkHttpGitHubConnector(okHttpClient))
 
         return when {
+            token != null -> {
+                logger.info("Using GitHub token from download action")
+                builder.withOAuthToken(token).build()
+            }
+
             System.getenv("SC_GITHUB_TOKEN") != null -> {
                 logger.info("Using GitHub token from environment variable SC_GITHUB_TOKEN")
                 builder.withOAuthToken(System.getenv("SC_GITHUB_TOKEN")).build()

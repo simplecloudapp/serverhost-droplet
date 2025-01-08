@@ -11,5 +11,6 @@ data class GithubDownloadActionData(
     val url: String = "",
     val path: String = "",
     val assetName: String = "",
-    val releaseTag: String? = null
+    val releaseTag: String? = null,
+    val token: String? = null
 )
