@@ -17,6 +17,7 @@ gson = "2.11.0"
 commons-compress = "1.27.1"
 xz = "1.10"
 ktor-cio = "3.0.3"
+jib = "0.27.2"
 
 [libraries]
 kotlin-jvm = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
@@ -53,6 +54,8 @@ ktor-cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor-cio" }
 
 docker-java = { module = "com.github.docker-java:docker-java", version.ref = "docker-java" }
 docker-java-transport-http = { module = "com.github.docker-java:docker-java-transport-httpclient5", version.ref = "docker-java" }
+
+jib = { module = "com.google.cloud.tools:jib-core", version.ref = "jib" }
 
 [bundles]
 log4j = [

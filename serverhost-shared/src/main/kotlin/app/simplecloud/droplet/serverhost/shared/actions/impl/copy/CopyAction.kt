@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.shared.actions.impl
+package app.simplecloud.droplet.serverhost.shared.actions.impl.copy
 
 import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
