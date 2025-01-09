@@ -3,7 +3,7 @@ package app.simplecloud.droplet.serverhost.runtime.runner
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.api.metrics.MetricsEventNames
 import app.simplecloud.droplet.api.time.ProtobufTimestamp
-import app.simplecloud.droplet.serverhost.runtime.process.ProcessInfo
+import app.simplecloud.droplet.serverhost.shared.process.ProcessInfo
 import app.simplecloud.pubsub.PubSubClient
 import build.buf.gen.simplecloud.metrics.v1.Metric
 import build.buf.gen.simplecloud.metrics.v1.MetricMeta

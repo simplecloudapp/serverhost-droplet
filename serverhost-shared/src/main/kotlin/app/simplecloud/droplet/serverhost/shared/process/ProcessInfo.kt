@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.process
+package app.simplecloud.droplet.serverhost.shared.process
 
 import app.simplecloud.droplet.serverhost.shared.hack.OS
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle

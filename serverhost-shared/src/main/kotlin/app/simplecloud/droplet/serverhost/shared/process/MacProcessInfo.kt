@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.process
+package app.simplecloud.droplet.serverhost.shared.process
 
 class MacProcessInfo(private val pid: Long) : ProcessInfo {
     override fun getCommand(): String {

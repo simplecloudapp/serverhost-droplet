@@ -1,6 +1,5 @@
-package app.simplecloud.droplet.serverhost.runtime.process
+package app.simplecloud.droplet.serverhost.shared.process
 
-import app.simplecloud.droplet.serverhost.runtime.util.ProcessDirectory
 import java.nio.file.Path
 import java.util.*
 import kotlin.io.path.absolutePathString

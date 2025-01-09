@@ -7,7 +7,7 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.process.ProcessFinder
+import app.simplecloud.droplet.serverhost.shared.process.ProcessFinder
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
@@ -341,6 +341,7 @@ class DefaultServerEnvironment(
         val process = getProcess(server.uniqueId)
             ?: return false
         val streamer = ScreenCommandExecutor(process.pid())
+        if(!streamer.isScreen()) return false
         streamer.sendCommand(command)
         return true
     }

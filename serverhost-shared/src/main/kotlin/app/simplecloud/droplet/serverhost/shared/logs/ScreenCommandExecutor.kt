@@ -7,6 +7,10 @@ class ScreenCommandExecutor(pid: Long) {
 
     private val executor = ScreenExecutor(pid)
 
+    fun isScreen(): Boolean {
+        return executor.isScreen()
+    }
+
     fun sendCommand(toSend: String) {
         executor.sendCommand(arrayOf("stuff", "$toSend\\n"))
     }
