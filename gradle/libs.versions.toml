@@ -18,12 +18,15 @@ commons-compress = "1.27.1"
 xz = "1.10"
 ktor-cio = "3.0.3"
 jib = "0.27.2"
+plexus = "3.0.14"
 
 [libraries]
 kotlin-jvm = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+
+plexus-utils = { module = "org.codehaus.plexus:plexus-utils", version.ref = "plexus" }
 
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
