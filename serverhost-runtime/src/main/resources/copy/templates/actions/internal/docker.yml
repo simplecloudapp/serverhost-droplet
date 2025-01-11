@@ -1,0 +1,12 @@
+init-placeholders:
+  - key: "docker-image"
+    field: "$.docker-image"
+    lowercase: true
+    type: "infer"
+
+setup:
+  - ref: docker/init-placeholders
+  - image-name: "%docker-image%"
+    context: "%server-dir%"
+    configurator: "%configurator%"
+    type: "create_image"

@@ -16,6 +16,7 @@ import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.pubsub.PubSubClient
 import build.buf.gen.simplecloud.controller.v1.ControllerDropletServiceGrpcKt
+import build.buf.gen.simplecloud.controller.v1.ControllerGroupServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +50,8 @@ class ServerHostRuntime(
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
         .withCallCredentials(authCallCredentials)
+    private val groupStub = ControllerGroupServiceGrpcKt.ControllerGroupServiceCoroutineStub(controllerChannel)
+        .withCallCredentials(authCallCredentials)
     private val controllerDropletStub =
         ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub(controllerChannel)
             .withCallCredentials(authCallCredentials)
@@ -59,6 +62,7 @@ class ServerHostRuntime(
         serverHost,
         serverHostStartCommand,
         controllerStub,
+        groupStub,
         MetricsTracker(pubSubClient),
         environmentsRepository,
         GroupRuntimeDirectory()

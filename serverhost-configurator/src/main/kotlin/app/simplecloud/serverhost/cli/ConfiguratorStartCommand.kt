@@ -7,6 +7,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.path
 import org.codehaus.plexus.util.cli.CommandLineUtils
 import java.nio.file.Path
+import java.nio.file.Paths
 
 class ConfiguratorStartCommand : CliktCommand() {
 
@@ -25,6 +26,9 @@ class ConfiguratorStartCommand : CliktCommand() {
     val command: String? by option(
         help = "Command to execute after successful configuration (string)", envvar = "SIMPLECLOUD_COMMAND"
     )
+    private val workingDir: Path by option(
+        help = "Where to execute the command (path)", envvar = "SIMPLECLOUD_WORKING_DIR"
+    ).path().default(Paths.get(""))
 
     override fun run() {
         try {
@@ -38,8 +42,7 @@ class ConfiguratorStartCommand : CliktCommand() {
             }
             if (command != null) {
                 println("Successfully configured, executing command...")
-                val process = ProcessBuilder().command(*CommandLineUtils.translateCommandline(command))
-                    .directory(destinationPath.toFile()).inheritIO().start()
+                val process = ProcessBuilder().command(*CommandLineUtils.translateCommandline(command)).directory(workingDir.toFile()).inheritIO().start()
                 println("\"${command}\" now running on ${process.pid()}")
                 val returnCode = process.waitFor()
                 println("\"${command}\" terminated with exit code $returnCode.")

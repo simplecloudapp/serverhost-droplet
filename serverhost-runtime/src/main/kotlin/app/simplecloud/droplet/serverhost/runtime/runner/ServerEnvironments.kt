@@ -5,7 +5,9 @@ import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.docker.DockerServerEnvironment
+import app.simplecloud.droplet.serverhost.runtime.runner.process.ProcessServerEnvironment
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
+import build.buf.gen.simplecloud.controller.v1.ControllerGroupServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.UpdateServerRequest
 import kotlinx.coroutines.*
@@ -16,12 +18,13 @@ class ServerEnvironments(
     serverHost: ServerHost,
     args: ServerHostStartCommand,
     private val controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub,
+    groupStub: ControllerGroupServiceGrpcKt.ControllerGroupServiceCoroutineStub,
     metricsTracker: MetricsTracker,
     environmentsRepository: EnvironmentConfigRepository,
     runtimeRepository: GroupRuntimeDirectory,
 ) {
 
-    private val default = DefaultServerEnvironment(
+    private val process = ProcessServerEnvironment(
         templateProvider,
         serverHost,
         args,
@@ -34,14 +37,16 @@ class ServerEnvironments(
         serverHost,
         args,
         controllerStub,
+        groupStub,
         metricsTracker,
         environmentsRepository,
+        templateProvider,
         runtimeRepository
     )
 
     private val envs = listOf(
-        default,
         docker,
+        process,
     )
 
     private val logger = LogManager.getLogger(ServerEnvironments::class.java)
@@ -60,7 +65,7 @@ class ServerEnvironments(
         return envs.firstOrNull {
             it.getServer(uniqueId)?.let { server ->
                 it.getEnvironment(server)
-                    ?.let { env -> it.appliesFor(env) }
+                    ?.let { env -> it.appliesFor(env) || it.appliesFor(server) }
             } ?: false
         }
     }
@@ -73,7 +78,9 @@ class ServerEnvironments(
      * Returns the initial environment used for the server
      */
     fun firstFor(server: Server): ServerEnvironment {
-        return envs.firstOrNull { it.getEnvironment(server)?.let { env -> it.appliesFor(env) } ?: false } ?: default
+        return envs.firstOrNull {
+            it.getEnvironment(server)?.let { env -> it.appliesFor(env) || it.appliesFor(server) } ?: false
+        } ?: process
     }
 
     fun startServerStateChecker(): Job {
@@ -85,8 +92,10 @@ class ServerEnvironments(
                         var server = it
                         try {
                             val updated = env.updateServer(it)
-                            if (updated == null) delete = true
-                            else {
+                            if (updated == null) {
+                                delete = true
+                                env.stopServer(server)
+                            } else {
                                 server = updated
                                 env.updateServerCache(updated.uniqueId, updated)
                             }

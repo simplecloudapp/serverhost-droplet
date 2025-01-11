@@ -34,10 +34,13 @@ object DockerClientInstance {
     }
 
     private fun createDefault(settings: Path): Properties {
-        if (!settings.parent.exists()) {
-            settings.parent.createDirectories()
-            settings.createFile()
+        if (settings.parent != null) {
+            if (!settings.parent.exists()) {
+                settings.parent.createDirectories()
+            }
         }
+        settings.createFile()
+
         val properties = Properties()
         when (OS.get()) {
             OS.WINDOWS -> {

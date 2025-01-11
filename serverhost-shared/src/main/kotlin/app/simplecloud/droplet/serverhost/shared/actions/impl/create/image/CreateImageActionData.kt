@@ -9,8 +9,8 @@ data class CreateImageActionData(
     val context: String,
     val cacheFrom: List<String> = listOf(),
     val cacheTo: List<String> = listOf(),
-    val exposedPort: Int = 25565,
     val buildType: ImageBuildType = ImageBuildType.DAEMON,
     val tarDest: String? = null,
+    val configurator: String,
     val base: String = "openjdk:21-slim",
 )
