@@ -16,6 +16,6 @@ object DockerUtils {
 
     fun isContainerHealthy(client: DockerClient, containerId: String): Boolean {
         val result = client.inspectContainerCmd(containerId).exec()
-        return result.state.health.status == "HEALTHY"
+        return result.state.health != null && result.state.health.failingStreak < 2
     }
 }

@@ -25,6 +25,7 @@ import io.ktor.server.plugins.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.apache.logging.log4j.LogManager
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Paths
 import java.time.LocalDateTime
@@ -112,6 +113,7 @@ class DockerServerEnvironment(
         val healthCommand = healthConf.testCommand.toMutableList()
         envBuilder.addAllWithPlaceholders(healthCommand, mapOf("%EXPOSED_PORT%" to dockerConf.exposedPort.toString()))
         val containerId: String
+        val updated: Server
         try {
             val container = client.createContainerCmd("$image:$tag")
                 .withName("${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 8)}").withHostConfig(
@@ -135,11 +137,9 @@ class DockerServerEnvironment(
                     this.cloudProperties["last-checksum"] = checksum
                 }
             })
+            updated = Server.fromDefinition(server.toDefinition().copy { this.cloudProperties["docker-container-id"] = containerId })
             controllerStub.updateServer(updateServerRequest {
-                this.server = server.toDefinition().copy {
-                    //TODO: make this work
-                    this.cloudProperties["docker-container-id"] = containerId
-                }
+                this.server = updated.toDefinition()
                 this.deleted = false
             })
 
@@ -149,7 +149,7 @@ class DockerServerEnvironment(
         }
         try {
             client.startContainerCmd(containerId).exec()
-            serverToContainer[serverToContainer.keys.find { it.uniqueId == server.uniqueId } ?: server] = containerId
+            serverToContainer[updated] = containerId
             logger.info("Server ${server.group}-${server.numericalId} started on Container $containerId")
         } catch (e: Exception) {
             logger.error("Failed to start container $containerId", e)
@@ -181,9 +181,10 @@ class DockerServerEnvironment(
             logger.error("Server $containerId not running (${server.group}-${server.numericalId})")
             return null
         }
+        val healthy = result.state.health != null && result.state.health.failingStreak == 0
         try {
             if (result.state.running != true) return null
-            if (!DockerUtils.isContainerHealthy(client, containerId)) {
+            if (!healthy) {
                 if (!PortProcessHandle.isPortBound(server.port.toInt())) return null
                 return server
             }
@@ -198,7 +199,11 @@ class DockerServerEnvironment(
             })
             return copiedServer
         } catch (e: Exception) {
-            logger.error("Failed to update container $containerId", e)
+            if(e !is IOException)
+                logger.error("Failed to update container $containerId", e)
+            else
+                logger.error("Failed to ping container $containerId")
+            if(healthy) return server
             return null
         }
     }
