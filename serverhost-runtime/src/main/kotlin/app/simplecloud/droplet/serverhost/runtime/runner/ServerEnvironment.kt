@@ -1,8 +1,10 @@
 package app.simplecloud.droplet.serverhost.runtime.runner
 
+import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
+import app.simplecloud.droplet.serverhost.runtime.config.environment.BuildPolicy
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
@@ -19,6 +21,15 @@ abstract class ServerEnvironment(
 ) {
 
     private val logger = LogManager.getLogger(ServerEnvironment::class.java)
+
+    /**
+     * Called on startup to build groups
+     * @param [server] a fake server used in the build process (To make templates work correctly)
+     * @param [context] The context of the method call (can be either [BuildPolicy.ONCE] or [BuildPolicy.TRIGGER]
+     */
+    open fun build(server: Server, context: BuildPolicy = BuildPolicy.ONCE) {
+
+    }
 
     /**
      * Starts a [Server] and returns true if the server is successfully started

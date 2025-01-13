@@ -3,10 +3,8 @@ package app.simplecloud.droplet.serverhost.runtime.runner.docker
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.api.time.ProtobufTimestamp
-import app.simplecloud.droplet.serverhost.runtime.config.environment.DockerHealthConfig
-import app.simplecloud.droplet.serverhost.runtime.config.environment.DockerStartConfig
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
+import app.simplecloud.droplet.serverhost.runtime.config.environment.*
+import app.simplecloud.droplet.serverhost.runtime.config.environment.generators.DefaultDockerConfigGenerator
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.runner.EnvironmentBuilder
 import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
@@ -25,12 +23,15 @@ import io.ktor.server.plugins.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.core.tools.picocli.CommandLine
+import org.codehaus.plexus.util.cli.CommandLineUtils
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
+import kotlin.math.log
 
 class DockerServerEnvironment(
     private val serverHost: ServerHost,
@@ -73,37 +74,79 @@ class DockerServerEnvironment(
     }
 
     @OptIn(ExperimentalPathApi::class)
-    override suspend fun startServer(server: Server): Boolean {
-        val client = getClientSafe() ?: return false
-        if (!server.properties.containsKey("docker-image") || !server.properties.containsKey("docker-tag")) {
-            logger.error("Can not start a server when no docker image is specified")
-            return false
+    override fun build(server: Server, context: BuildPolicy) {
+        val env = getEnvironment(server) ?: DefaultDockerConfigGenerator.generate(args)
+        if (context == BuildPolicy.ONCE && !env.buildPolicy.firstBuild) return
+        if (context == BuildPolicy.TRIGGER && !env.buildPolicy.trigger) return
+        if (!server.properties.containsKey("docker-image")) {
+            logger.error("Can not build a new docker image if none is specified")
+            return
         }
         val image = server.properties["docker-image"]!!
-        val tag = server.properties["docker-tag"]!!
-        if (!DockerUtils.imageExists(client, image, tag)) {
-            logger.error("Provided image is not present")
-            return false
+        val tag = server.properties["docker-tag"] ?: "latest"
+        logger.info("Building image $image:$tag for group ${server.group}...")
+        val buildPath = Paths.get("cache", "docker", "build", server.group)
+        val result = executeTemplate(
+            buildPath,
+            Server.fromDefinition(
+                server.toDefinition().copy { this.serverPort = env.start?.docker?.exposedPort?.toLong() ?: this.serverPort }),
+            YamlActionTriggerTypes.START,
+            templateProvider
+        )
+        if (result != null) {
+            buildPath.deleteRecursively()
+            logger.info("Image $image:$tag successfully built!")
+        } else {
+            logger.error("Failed to build image for group ${server.group}!")
         }
+    }
+
+    @OptIn(ExperimentalPathApi::class)
+    override suspend fun startServer(server: Server): Boolean {
+        val client = getClientSafe() ?: return false
         var config = getEnvironment(server)
         if (config?.enabled == false) {
             logger.info("Environment ${config.name} used in ${server.group} is not enabled")
             return false
         }
-        val runtime = EnvironmentBuilder.buildRuntime(server, runtimeRepository, "docker")
-        config = environmentsRepository.get(runtime)
+        if (!server.properties.containsKey("docker-image")) {
+            logger.error("Can not start a server when no docker image is specified")
+            return false
+        }
+        val image = server.properties["docker-image"]!!
+        val tag = server.properties["docker-tag"] ?: "latest"
+        var imagePresent = DockerUtils.isImagePresent(client, image, tag)
+        if(config == null) {
+            val runtime = EnvironmentBuilder.buildRuntime(server, runtimeRepository, "docker")
+            config = environmentsRepository.get(runtime)
+        }
         if (config == null || !config.enabled) {
             logger.info("Environment ${config?.name} used in ${server.group} is not enabled or does not exist.")
             return false
         }
         val buildPath = Paths.get("cache", "docker", "build", server.group)
-        val result = executeTemplate(buildPath, server, YamlActionTriggerTypes.START, templateProvider)
+        val result = if (DockerUtils.shouldBuildImage(config.buildPolicy, imagePresent)) executeTemplate(
+            buildPath,
+            Server.fromDefinition(
+                server.toDefinition().copy { this.serverPort = config.start?.docker?.exposedPort?.toLong() ?: this.serverPort }),
+            YamlActionTriggerTypes.START,
+            templateProvider
+        ) else null
         val checksum: String
         if (result != null) {
             buildPath.deleteRecursively()
             checksum = result.retrieve<String>("last-checksum") ?: server.properties["last-checksum"] ?: ""
         } else {
             checksum = server.properties["last-checksum"] ?: ""
+        }
+        if (!imagePresent)
+            imagePresent = DockerUtils.isImagePresent(client, image, tag)
+        if (DockerUtils.shouldPullImage(config.imagePullPolicy, imagePresent)) {
+            val success = DockerUtils.pullImage(client, image, tag)
+            if (!success) {
+                logger.error("Failed to pull image $image:$tag")
+                return false
+            }
         }
 
         val envBuilder = DockerEnvironmentBuilder(config, args, serverHost)
@@ -137,7 +180,8 @@ class DockerServerEnvironment(
                     this.cloudProperties["last-checksum"] = checksum
                 }
             })
-            updated = Server.fromDefinition(server.toDefinition().copy { this.cloudProperties["docker-container-id"] = containerId })
+            updated = Server.fromDefinition(
+                server.toDefinition().copy { this.cloudProperties["docker-container-id"] = containerId })
             controllerStub.updateServer(updateServerRequest {
                 this.server = updated.toDefinition()
                 this.deleted = false
@@ -164,6 +208,7 @@ class DockerServerEnvironment(
         try {
             client.stopContainerCmd(containerId).exec()
             serverToContainer.keys.find { server.uniqueId == it.uniqueId }?.let { serverToContainer.remove(it) }
+            logger.info("Stopped server ${server.group}-${server.numericalId} (Container: ${containerId})")
             return true
         } catch (e: Exception) {
             logger.error("Failed to stop container $containerId", e)
@@ -199,11 +244,11 @@ class DockerServerEnvironment(
             })
             return copiedServer
         } catch (e: Exception) {
-            if(e !is IOException)
+            if (e !is IOException)
                 logger.error("Failed to update container $containerId", e)
             else
                 logger.error("Failed to ping container $containerId")
-            if(healthy) return server
+            if (healthy) return server
             return null
         }
     }
@@ -229,7 +274,7 @@ class DockerServerEnvironment(
         }
         try {
             val state = client.inspectContainerCmd(containerId).exec().state
-            if (state.running != true || (state.health.status != "HEALTHY" && !PortProcessHandle.isPortBound(server.port.toInt()))) {
+            if (state.running != true || (state.health.failingStreak > 0 && !PortProcessHandle.isPortBound(server.port.toInt()))) {
                 logger.error("Could not reattach ${server.group}-${server.numericalId}. Is the container down or the port not bound?")
                 PortProcessHandle.removePreBind(server.port.toInt())
                 return false
@@ -247,7 +292,8 @@ class DockerServerEnvironment(
     override fun executeCommand(server: Server, command: String): Boolean {
         val client = getClientSafe() ?: return false
         val containerId = getContainerId(server) ?: return false
-        val statement = client.execCreateCmd(containerId).withCmd(*command.split(" ").toTypedArray()).exec()
+        logger.info("sending")
+        val statement = client.execCreateCmd(containerId).withCmd(*CommandLineUtils.translateCommandline(command)).exec()
         client.execStartCmd(statement.id).exec(DockerCallback {})
         return true
     }
@@ -255,7 +301,9 @@ class DockerServerEnvironment(
     override fun streamLogs(server: Server): Flow<ServerHostStreamServerLogsResponse> {
         val client = getClientSafe() ?: return emptyFlow()
         val containerId = getContainerId(server) ?: return emptyFlow()
-        return client.logContainerCmd(containerId).withFollowStream(true).withTailAll().exec(FlowDockerCallback {
+        logger.info("streaming")
+        return client.logContainerCmd(containerId).withStdErr(true).withStdOut(true).withFollowStream(true).withTailAll().exec(FlowDockerCallback {
+            println(String(it.payload))
             serverHostStreamServerLogsResponse {
                 this.content = String(it.payload)
                 this.timestamp = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())

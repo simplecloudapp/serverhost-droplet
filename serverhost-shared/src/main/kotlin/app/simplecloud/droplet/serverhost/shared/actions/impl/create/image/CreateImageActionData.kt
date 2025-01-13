@@ -12,5 +12,5 @@ data class CreateImageActionData(
     val buildType: ImageBuildType = ImageBuildType.DAEMON,
     val tarDest: String? = null,
     val configurator: String,
-    val base: String = "openjdk:21-slim",
+    val base: String = "eclipse-temurin:21-jre-alpine",
 )

@@ -78,6 +78,7 @@ class ServerHostRuntime(
         actionProvider.load()
         templateProvider.load()
         startFileSystemWatcher()
+        environments.buildAll()
         environments.startServerStateChecker()
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
@@ -107,7 +108,6 @@ class ServerHostRuntime(
         logger.info("Starting template file system watcher...")
         templateSnapshotCache.registerWatcher()
     }
-
 
     private fun attach() {
         logger.info("Attaching to controller...")

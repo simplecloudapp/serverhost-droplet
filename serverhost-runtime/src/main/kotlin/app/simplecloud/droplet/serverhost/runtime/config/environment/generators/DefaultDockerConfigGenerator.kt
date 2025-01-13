@@ -1,9 +1,6 @@
 package app.simplecloud.droplet.serverhost.runtime.config.environment.generators
 
-import app.simplecloud.droplet.serverhost.runtime.config.environment.DockerStartConfig
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigGenerator
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentStartConfig
+import app.simplecloud.droplet.serverhost.runtime.config.environment.*
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 
 object DefaultDockerConfigGenerator : EnvironmentConfigGenerator {
@@ -12,6 +9,8 @@ object DefaultDockerConfigGenerator : EnvironmentConfigGenerator {
         return EnvironmentConfig(
             name = getName(),
             isDocker = true,
+            buildPolicy = BuildPolicy.ONCE_AND_TRIGGER,
+            imagePullPolicy = ImagePullPolicy.IF_NOT_PRESENT,
             start = EnvironmentStartConfig(
                 command = listOf(
                     "java",

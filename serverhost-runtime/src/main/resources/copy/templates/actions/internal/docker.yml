@@ -3,10 +3,16 @@ init-placeholders:
     field: "$.docker-image"
     lowercase: true
     type: "infer"
+  - key: "docker-tag"
+    field: "$.docker-tag"
+    lowercase: true
+    type: "infer"
 
 setup:
   - ref: docker/init-placeholders
   - image-name: "%docker-image%"
+    tags:
+      - "%docker-tag%"
     context: "%server-dir%"
     configurator: "%configurator%"
     type: "create_image"

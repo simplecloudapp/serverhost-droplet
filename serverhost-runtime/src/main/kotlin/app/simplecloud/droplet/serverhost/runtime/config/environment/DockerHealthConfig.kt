@@ -8,7 +8,7 @@ data class DockerHealthConfig(
         "CMD-SHELL",
         "busybox netstat -tln | grep -q ':%EXPOSED_PORT% ' || exit 1",
     ),
-    val interval: Long = 5000000000L,
+    val interval: Long = 30000000000L,
     val retries: Int = 3,
     val timeout: Long = 3000000000L,
 )
