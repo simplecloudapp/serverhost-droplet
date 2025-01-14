@@ -12,7 +12,7 @@ import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 
 class DockerEnvironmentBuilder(
-    private val config: EnvironmentConfig?,
+    private val config: EnvironmentConfig,
     private val args: ServerHostStartCommand,
     private val serverHost: ServerHost,
 ) : EnvironmentBuilder<List<String>> {
@@ -37,7 +37,7 @@ class DockerEnvironmentBuilder(
 
     override fun buildEnv(server: Server): List<String> {
         val result = mutableListOf<String>()
-        val dockerConf = config?.start?.docker ?: DockerStartConfig()
+        val dockerConf = config.start?.docker ?: DockerStartConfig()
         server.toEnv().forEach {
             if (dockerConf.envMappings.containsKey(it.key))
                 result.add("${dockerConf.envMappings[it.key]}=${it.value}")
@@ -50,7 +50,7 @@ class DockerEnvironmentBuilder(
             result.add("$key=$value")
         }
         result.add("SIMPLECLOUD_COMMAND=${
-            config?.start?.command?.toMutableList()
+            config.start?.command?.toMutableList()
                 ?.let {
                     addAllWithPlaceholders(
                         it,

@@ -20,11 +20,14 @@ interface EnvironmentBuilder<T> {
         list.addAll(result)
     }
 
-    fun getDefaultEnv(serverHost: ServerHost, args: ServerHostStartCommand): Map<String, String> {
+    fun getDefaultEnv(
+        serverHost: ServerHost,
+        args: ServerHostStartCommand
+    ): Map<String, String> {
         return mapOf(
             "HOST_IP" to serverHost.host,
             "HOST_PORT" to serverHost.port.toString(),
-            "CONTROLLER_HOST" to args.grpcHost,
+            "CONTROLLER_HOST" to if (args.grpcHost == "0.0.0.0") serverHost.host else args.grpcHost,
             "CONTROLLER_PORT" to args.grpcPort.toString(),
             "CONTROLLER_SECRET" to args.authSecret,
             "CONTROLLER_PUBSUB_HOST" to args.pubSubGrpcHost,
