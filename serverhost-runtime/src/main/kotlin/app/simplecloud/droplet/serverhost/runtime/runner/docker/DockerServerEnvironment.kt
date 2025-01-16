@@ -236,12 +236,12 @@ class DockerServerEnvironment(
             val address = InetSocketAddress(server.ip, server.port.toInt())
             val ping = ServerPinger.ping(address)
             val copiedServer = updateServer(server, ping, controllerStub)
-            //metricsTracker.trackPlayers(copiedServer)
-            /*client.statsCmd(containerId).exec(DockerCallback { stats ->
+            metricsTracker.trackPlayers(copiedServer)
+            client.statsCmd(containerId).withNoStream(true).exec(DockerCallback { stats ->
                 val ram = stats.memoryStats.usage ?: 0L
                 val cpu = stats.cpuStats.systemCpuUsage ?: 0L
                 metricsTracker.trackRamAndCpu(server, ram, cpu)
-            }) */
+            })
             return copiedServer
         } catch (e: Exception) {
             if (e !is IOException)

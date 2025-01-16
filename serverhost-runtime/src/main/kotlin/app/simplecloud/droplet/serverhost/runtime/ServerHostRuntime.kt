@@ -73,11 +73,11 @@ class ServerHostRuntime(
     suspend fun start() {
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
-        attach()
         resourceCopier.copyAll("copy")
         actionProvider.load()
         templateProvider.load()
         startFileSystemWatcher()
+        attach()
         environments.buildAll()
         environments.startServerStateChecker()
         suspendCancellableCoroutine<Unit> { continuation ->
@@ -109,10 +109,11 @@ class ServerHostRuntime(
         templateSnapshotCache.registerWatcher()
     }
 
-    private fun attach() {
+    private suspend fun attach() {
         logger.info("Attaching to controller...")
         val attacher =
             Attacher(serverHost, controllerChannel, controllerDropletStub)
+        attacher.enforceAttachBlocking()
         attacher.enforceAttach()
     }
 
