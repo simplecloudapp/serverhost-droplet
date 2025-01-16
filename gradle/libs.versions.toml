@@ -30,6 +30,8 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref =
 
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
+plexus-utils = { module = "org.codehaus.plexus:plexus-utils", version.ref = "plexus" }
+
 github = { module = "org.kohsuke:github-api", version.ref = "github" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 

@@ -7,7 +7,6 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.process.ProcessFinder
 import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
 import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.runner.MetricsTracker
@@ -22,6 +21,7 @@ import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
+import app.simplecloud.droplet.serverhost.shared.process.ProcessFinder
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ServerHostStreamServerLogsResponse
 import build.buf.gen.simplecloud.controller.v1.copy
@@ -309,6 +309,7 @@ class ProcessServerEnvironment(
         val process = getProcess(server.uniqueId)
             ?: return false
         val streamer = ScreenCommandExecutor(process.pid())
+        if(!streamer.isScreen()) return false
         streamer.sendCommand(command)
         return true
     }
