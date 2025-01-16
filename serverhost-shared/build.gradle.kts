@@ -8,6 +8,8 @@ dependencies {
     api(rootProject.libs.commons.io)
     api(project(":serverhost-configurator"))
     implementation(rootProject.libs.gson)
+    implementation(rootProject.libs.github)
+    implementation(rootProject.libs.okhttp)
     implementation(rootProject.libs.bundles.log4j)
     implementation(rootProject.libs.kotlin.reflect)
     implementation(rootProject.libs.ktor.cio)

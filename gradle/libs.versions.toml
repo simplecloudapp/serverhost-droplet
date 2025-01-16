@@ -19,6 +19,8 @@ xz = "1.10"
 ktor-cio = "3.0.3"
 jib = "0.27.2"
 plexus = "3.0.16"
+github = "1.326"
+okhttp = "4.12.0"
 
 [libraries]
 kotlin-jvm = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
@@ -26,9 +28,10 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlin-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 
-plexus-utils = { module = "org.codehaus.plexus:plexus-utils", version.ref = "plexus" }
-
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+
+github = { module = "org.kohsuke:github-api", version.ref = "github" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
 log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
@@ -60,16 +63,13 @@ docker-java-transport-http = { module = "com.github.docker-java:docker-java-tran
 
 jib = { module = "com.google.cloud.tools:jib-core", version.ref = "jib" }
 
+
 [bundles]
 log4j = [
     "log4j-core",
     "log4j-api",
     "log4j-slf4j",
     "slf4j-api"
-]
-docker = [
-    "docker-java",
-    "docker-java-transport-http"
 ]
 configurate = [
     "configurate-yaml",
@@ -78,6 +78,11 @@ configurate = [
 ]
 night-config = [
     "night-config-toml"
+]
+
+docker = [
+    "docker-java",
+    "docker-java-transport-http"
 ]
 
 [plugins]

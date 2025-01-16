@@ -9,6 +9,7 @@ import app.simplecloud.droplet.serverhost.shared.actions.impl.create.dir.CreateD
 import app.simplecloud.droplet.serverhost.shared.actions.impl.create.image.CreateImageAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.delete.DeleteAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.DownloadAction
+import app.simplecloud.droplet.serverhost.shared.actions.impl.download.GithubDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.modrinth.ModrinthDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.env.EnvAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.infer.InferFromServerAction
@@ -22,6 +23,7 @@ enum class YamlActionTypes(val action: YamlAction<*>) {
     INFER(InferFromServerAction),
     CONFIGURATE(ConfigurateAction),
     DOWNLOAD(DownloadAction),
+    GITHUB_DOWNLOAD(GithubDownloadAction),
     MODRINTH_DOWNLOAD(ModrinthDownloadAction),
     COMPRESS(CompressAction),
     DECOMPRESS(DecompressAction),

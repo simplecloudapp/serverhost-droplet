@@ -1,15 +1,15 @@
 package app.simplecloud.droplet.serverhost.shared.hack
 
+import app.simplecloud.droplet.serverhost.shared.process.ProcessInfo
+
 class ScreenExecutor(private var pid: Long) {
+
     private var isScreen = false
 
     init {
         var handle = ProcessHandle.of(pid)
         while (handle.isPresent) {
-            if (handle.get().info().commandLine().orElseGet { "" }.lowercase().startsWith("screen") || handle.get()
-                    .info().command().orElseGet { "" }.lowercase().startsWith("screen") || handle.get().info()
-                    .arguments().orElseGet { arrayOf("none") }.firstOrNull()?.lowercase()?.startsWith("screen") == true
-            ) {
+            if (ProcessInfo.of(handle.get()).getCommand().lowercase().startsWith("screen")) {
                 pid = handle.get().pid()
                 isScreen = true
                 break
