@@ -23,7 +23,6 @@ import io.ktor.server.plugins.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.core.tools.picocli.CommandLine
 import org.codehaus.plexus.util.cli.CommandLineUtils
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -31,7 +30,6 @@ import java.nio.file.Paths
 import java.time.LocalDateTime
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteRecursively
-import kotlin.math.log
 
 class DockerServerEnvironment(
     private val serverHost: ServerHost,
@@ -89,7 +87,8 @@ class DockerServerEnvironment(
         val result = executeTemplate(
             buildPath,
             Server.fromDefinition(
-                server.toDefinition().copy { this.serverPort = env.start?.docker?.exposedPort?.toLong() ?: this.serverPort }),
+                server.toDefinition()
+                    .copy { this.serverPort = env.start?.docker?.exposedPort?.toLong() ?: this.serverPort }),
             YamlActionTriggerTypes.START,
             templateProvider
         )
@@ -116,7 +115,7 @@ class DockerServerEnvironment(
         val image = server.properties["docker-image"]!!
         val tag = server.properties["docker-tag"] ?: "latest"
         var imagePresent = DockerUtils.isImagePresent(client, image, tag)
-        if(config == null) {
+        if (config == null) {
             val runtime = EnvironmentBuilder.buildRuntime(server, runtimeRepository, "docker")
             config = environmentsRepository.get(runtime)
         }
@@ -128,7 +127,8 @@ class DockerServerEnvironment(
         val result = if (DockerUtils.shouldBuildImage(config.buildPolicy, imagePresent)) executeTemplate(
             buildPath,
             Server.fromDefinition(
-                server.toDefinition().copy { this.serverPort = config.start?.docker?.exposedPort?.toLong() ?: this.serverPort }),
+                server.toDefinition()
+                    .copy { this.serverPort = config.start?.docker?.exposedPort?.toLong() ?: this.serverPort }),
             YamlActionTriggerTypes.START,
             templateProvider
         ) else null
@@ -236,12 +236,12 @@ class DockerServerEnvironment(
             val address = InetSocketAddress(server.ip, server.port.toInt())
             val ping = ServerPinger.ping(address)
             val copiedServer = updateServer(server, ping, controllerStub)
-            metricsTracker.trackPlayers(copiedServer)
-            client.statsCmd(containerId).exec(DockerCallback { stats ->
+            //metricsTracker.trackPlayers(copiedServer)
+            /*client.statsCmd(containerId).exec(DockerCallback { stats ->
                 val ram = stats.memoryStats.usage ?: 0L
                 val cpu = stats.cpuStats.systemCpuUsage ?: 0L
                 metricsTracker.trackRamAndCpu(server, ram, cpu)
-            })
+            }) */
             return copiedServer
         } catch (e: Exception) {
             if (e !is IOException)
@@ -292,8 +292,8 @@ class DockerServerEnvironment(
     override fun executeCommand(server: Server, command: String): Boolean {
         val client = getClientSafe() ?: return false
         val containerId = getContainerId(server) ?: return false
-        logger.info("sending")
-        val statement = client.execCreateCmd(containerId).withCmd(*CommandLineUtils.translateCommandline(command)).exec()
+        val statement =
+            client.execCreateCmd(containerId).withCmd(*CommandLineUtils.translateCommandline(command)).exec()
         client.execStartCmd(statement.id).exec(DockerCallback {})
         return true
     }
@@ -301,9 +301,8 @@ class DockerServerEnvironment(
     override fun streamLogs(server: Server): Flow<ServerHostStreamServerLogsResponse> {
         val client = getClientSafe() ?: return emptyFlow()
         val containerId = getContainerId(server) ?: return emptyFlow()
-        logger.info("streaming")
-        return client.logContainerCmd(containerId).withStdErr(true).withStdOut(true).withFollowStream(true).withTailAll().exec(FlowDockerCallback {
-            println(String(it.payload))
+        return client.logContainerCmd(containerId).withStdErr(true).withStdOut(true).withFollowStream(true)
+            .withTailAll().exec(FlowDockerCallback {
             serverHostStreamServerLogsResponse {
                 this.content = String(it.payload)
                 this.timestamp = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())

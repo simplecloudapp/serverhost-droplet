@@ -33,7 +33,7 @@ The server host droplet is one of our first and most important droplets. It is r
 - [x] **Templating Engine**: Extensively manage preconfigured content for your minecraft servers
 - [x] **Log streaming**: Stream server logs and send commands to servers
 - [x] **Screen support**: Start servers in [GNU screens][gnu-screen].
-- [ ] **Docker support**: Effortlessly start servers in docker without more configuration needed.
+- [x] **Docker support**: Effortlessly start servers in docker without more configuration needed.
 ## Contributing
 Contributions to SimpleCloud are welcome and highly appreciated. However, before you jump right into it, we would like you to read our [Contribution Guide][docs-contribute].
 

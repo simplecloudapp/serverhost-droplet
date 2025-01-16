@@ -107,7 +107,7 @@ class ServerEnvironments(
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 envs.forEach { env ->
-                    env.getServers().forEach {
+                    env.getServers().toList().forEach {
                         var delete = false
                         var server = it
                         try {
