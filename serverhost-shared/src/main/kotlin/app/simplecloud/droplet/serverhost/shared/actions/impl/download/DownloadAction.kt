@@ -8,6 +8,7 @@ import io.ktor.client.*
 import kotlinx.coroutines.runBlocking
 import java.net.URI
 import java.nio.file.Paths
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.exists
 
@@ -25,17 +26,17 @@ object DownloadAction : YamlAction<DownloadActionData> {
         val destinationPath = Paths.get(placeholders.parse(data.path))
         DownloadUtil.ensureDestinationPathExists(destinationPath, data.initDirIfMissing)
 
-        val file = DownloadUtil.resolveFilePath(url, destinationPath)
-        if (file.exists() && !data.replace) {
-            throw IllegalStateException("File already exists and overwrite is disabled: $file")
+        println(destinationPath.absolutePathString())
+        if (destinationPath.exists() && !data.replace) {
+            throw IllegalStateException("File already exists and overwrite is disabled: $destinationPath")
         }
 
-        if (file.exists()) {
-            file.deleteExisting()
+        if (destinationPath.exists()) {
+            destinationPath.deleteExisting()
         }
 
         runBlocking {
-            DownloadUtil.downloadFile(httpClient, url, file)
+            DownloadUtil.downloadFile(httpClient, url, destinationPath)
         }
     }
 
