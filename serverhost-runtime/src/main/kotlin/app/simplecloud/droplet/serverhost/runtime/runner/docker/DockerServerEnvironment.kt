@@ -159,19 +159,26 @@ class DockerServerEnvironment(
         val updated: Server
         try {
             val container = client.createContainerCmd("$image:$tag")
-                .withName("${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 8)}").withHostConfig(
-                    HostConfig.newHostConfig().withPortBindings(
-                        PortBinding(
-                            Ports.Binding.bindPort(server.port.toInt()),
-                            ExposedPort.tcp(dockerConf.exposedPort)
+                .withName("${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 8)}")
+                .withHostConfig(
+                    HostConfig.newHostConfig()
+                        .withPortBindings(
+                            PortBinding(
+                                Ports.Binding.bindPort(server.port.toInt()),
+                                ExposedPort.tcp(dockerConf.exposedPort)
+                            )
                         )
-                    ).withAutoRemove(true)
+                        .withAutoRemove(true)
                 ).withHealthcheck(
-                    HealthCheck().withInterval(healthConf.interval).withRetries(healthConf.retries)
-                        .withTimeout(healthConf.timeout).withTest(healthCommand)
+                    HealthCheck()
+                        .withInterval(healthConf.interval)
+                        .withRetries(healthConf.retries)
+                        .withTimeout(healthConf.timeout)
+                        .withTest(healthCommand)
                 )
                 .withEnv(env)
                 .exec()
+
             container.warnings.forEach { warning -> logger.warn(warning) }
             containerId = container.id
             val group = groupStub.getGroupByName(getGroupByNameRequest { groupName = server.group }).group
@@ -191,6 +198,7 @@ class DockerServerEnvironment(
             logger.error("Failed to create container for $image:$tag", e)
             return false
         }
+
         try {
             client.startContainerCmd(containerId).exec()
             serverToContainer[updated] = containerId
@@ -292,8 +300,9 @@ class DockerServerEnvironment(
     override fun executeCommand(server: Server, command: String): Boolean {
         val client = getClientSafe() ?: return false
         val containerId = getContainerId(server) ?: return false
-        val statement =
-            client.execCreateCmd(containerId).withCmd(*CommandLineUtils.translateCommandline(command)).exec()
+        val statement = client.execCreateCmd(containerId)
+            .withCmd(*CommandLineUtils.translateCommandline(command))
+            .exec()
         client.execStartCmd(statement.id).exec(DockerCallback {})
         return true
     }
@@ -301,13 +310,20 @@ class DockerServerEnvironment(
     override fun streamLogs(server: Server): Flow<ServerHostStreamServerLogsResponse> {
         val client = getClientSafe() ?: return emptyFlow()
         val containerId = getContainerId(server) ?: return emptyFlow()
-        return client.logContainerCmd(containerId).withStdErr(true).withStdOut(true).withFollowStream(true)
-            .withTailAll().exec(FlowDockerCallback {
-            serverHostStreamServerLogsResponse {
-                this.content = String(it.payload)
-                this.timestamp = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())
-            }
-        }).asFlow()
+        return client.logContainerCmd(containerId)
+            .withStdErr(true)
+            .withStdOut(true)
+            .withFollowStream(true)
+            .withTailAll()
+            .exec(
+                FlowDockerCallback {
+                    serverHostStreamServerLogsResponse {
+                        this.content = String(it.payload)
+                        this.timestamp = ProtobufTimestamp.fromLocalDateTime(LocalDateTime.now())
+                    }
+                }
+            )
+            .asFlow()
     }
 
     override fun appliesFor(env: EnvironmentConfig): Boolean {

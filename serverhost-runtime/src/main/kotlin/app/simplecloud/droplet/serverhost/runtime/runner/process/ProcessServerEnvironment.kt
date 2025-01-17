@@ -249,10 +249,11 @@ class ProcessServerEnvironment(
         if (env != null && env.useScreenStop) {
             terminateScreenSession(process.pid())
         } else {
-            if (!forcibly)
+            if (!forcibly) {
                 process.destroy()
-            else
+            } else {
                 process.destroyForcibly()
+            }
         }
 
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
@@ -308,8 +309,10 @@ class ProcessServerEnvironment(
         if (getEnvironment(server)?.isScreen != true) return false
         val process = getProcess(server.uniqueId)
             ?: return false
+
         val streamer = ScreenCommandExecutor(process.pid())
-        if(!streamer.isScreen()) return false
+        if (!streamer.isScreen()) return false
+
         streamer.sendCommand(command)
         return true
     }
@@ -386,8 +389,9 @@ class ProcessServerEnvironment(
             .command(command)
             .directory(serverDir ?: getServerDir(server, runtimeConfig))
         builder.environment().putAll(envBuilder.buildEnv(server))
-        if (!env.isScreen)
+        if (!env.isScreen) {
             builder.redirectOutput(logFile.toFile())
+        }
         return builder
     }
 

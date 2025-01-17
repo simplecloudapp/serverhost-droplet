@@ -33,9 +33,8 @@ class ProcessEnvironmentBuilder(private val serverHost: ServerHost, private val 
     }
 
     override fun buildRuntime(server: Server, repository: GroupRuntimeDirectory): GroupRuntime {
-        var env = "default"
-        if (ScreenCapabilities.isScreenAvailable())
-            env = "screen"
+        val env = if (ScreenCapabilities.isScreenAvailable()) "screen" else "default"
+
         val runtime = GroupRuntime(env)
         repository.save("${server.group}.yml", runtime)
         return runtime
