@@ -28,13 +28,12 @@ class ServerEnvironments(
 ) {
 
     private val docker = DockerServerEnvironment(
+        templateProvider,
         serverHost,
         args,
         controllerStub,
-        groupStub,
         metricsTracker,
         environmentsRepository,
-        templateProvider,
         runtimeRepository
     )
     private val process = ProcessServerEnvironment(

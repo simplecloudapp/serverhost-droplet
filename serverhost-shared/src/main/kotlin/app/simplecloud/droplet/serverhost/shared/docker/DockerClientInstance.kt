@@ -20,8 +20,9 @@ object DockerClientInstance {
         if (settings.exists()) {
             loaded = Properties()
             FileInputStream(settings.toFile()).use { stream -> loaded.load(stream) }
-        } else
+        } else {
             loaded = createDefault(settings)
+        }
         val config = DefaultDockerClientConfig.createDefaultConfigBuilder().withProperties(loaded).build()
         val httpClient = ApacheDockerHttpClient.Builder().dockerHost(config.dockerHost).sslConfig(config.sslConfig)
             .maxConnections(100)

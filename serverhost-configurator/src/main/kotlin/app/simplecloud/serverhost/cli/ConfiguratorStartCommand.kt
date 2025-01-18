@@ -15,7 +15,7 @@ class ConfiguratorStartCommand : CliktCommand() {
         help = "Path to execute the configurator against (path)", envvar = "DESTINATION_PATH"
     ).path().default(Path.of(""))
     private val configuratorPath: Path by option(
-        help = "Path to execute the configurator against (path)", envvar = "CONFIGURATOR_PATH"
+        help = "Path of the configurator (path)", envvar = "CONFIGURATOR_PATH"
     ).path().default(Path.of("configurator.yml"))
     val prefix: String by option(
         help = "Prefix of simplecloud environment variables (string)", envvar = "SIMPLECLOUD_PREFIX"
@@ -42,7 +42,11 @@ class ConfiguratorStartCommand : CliktCommand() {
             }
             if (command != null) {
                 println("Successfully configured, executing command...")
-                val process = ProcessBuilder().command(*CommandLineUtils.translateCommandline(command)).directory(workingDir.toFile()).inheritIO().start()
+                val process = ProcessBuilder()
+                    .command(*CommandLineUtils.translateCommandline(command))
+                    .directory(workingDir.toFile())
+                    .inheritIO()
+                    .start()
                 println("\"${command}\" now running on ${process.pid()}")
                 val returnCode = process.waitFor()
                 println("\"${command}\" terminated with exit code $returnCode.")
