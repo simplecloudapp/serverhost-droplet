@@ -9,6 +9,7 @@ import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.shared.process.ProcessFinder
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
+import app.simplecloud.droplet.serverhost.runtime.terminal.ScreenExecutor
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
@@ -17,8 +18,6 @@ import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
-import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
-import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
 import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -278,7 +277,7 @@ class DefaultServerEnvironment(
         }
 
         val env = getEnvironment(server)
-        if (env != null && env.useScreenStop) {
+        if (env != null && env.update?.command != null) {
             terminateScreenSession(process.pid())
         } else {
             if (!forcibly)
@@ -338,21 +337,19 @@ class DefaultServerEnvironment(
 
     override fun executeCommand(server: Server, command: String): Boolean {
         if (getEnvironment(server)?.isScreen != true) return false
-        val process = getProcess(server.uniqueId)
-            ?: return false
-        val streamer = ScreenCommandExecutor(process.pid())
-        if(!streamer.isScreen()) return false
-        streamer.sendCommand(command)
-        return true
+        val executor = ScreenExecutor(server, this)
+        return executor.executeCommand(command)
     }
 
     override fun streamLogs(server: Server): Flow<ServerHostStreamServerLogsResponse> {
-        var configurer: ScreenConfigurer? = null
+        var configurer: ScreenExecutor? = null
+        val environment = getEnvironment(server)
         try {
             val process = getProcess(server.uniqueId)
-            if (process != null) {
-                configurer = ScreenConfigurer(process.pid())
+            if (process != null && environment?.isScreen == true) {
+                configurer = ScreenExecutor(server, this)
                 configurer.setLogsFlush(0)
+            }else {
                 logger.warn("Screen streaming for server ${server.group}-${server.numericalId} (${server.uniqueId}) not available, log stream will be slower.")
             }
             val fileStreamer = DefaultLogStreamer(getServerLogFile(server))
@@ -372,7 +369,7 @@ class DefaultServerEnvironment(
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
-            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
+            "%SESSION_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
             "%NUMERICAL_ID%" to server.numericalId.toString(),
             "%GROUP%" to server.group,
             "%UNIQUE_ID%" to server.uniqueId,

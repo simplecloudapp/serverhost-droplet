@@ -1,11 +1,8 @@
 package app.simplecloud.droplet.serverhost.runtime.config.environment.generators
 
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigGenerator
-import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentStartConfig
+import app.simplecloud.droplet.serverhost.runtime.config.environment.*
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
-import app.simplecloud.droplet.serverhost.shared.hack.OS
 import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 
@@ -26,7 +23,7 @@ object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
         command.addAll(
             listOf(
                 "-dmS",
-                "%SCREEN_NAME%",
+                "%SESSION_NAME%",
                 javaHome,
                 "-Xms%MIN_MEMORY%M",
                 "-Xmx%MAX_MEMORY%M",
@@ -40,9 +37,14 @@ object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
         return EnvironmentConfig(
             name = getName(),
             isScreen = true,
-            useScreenStop = OS.get() == OS.LINUX,
             start = EnvironmentStartConfig(
                 command = command
+            ),
+            update = EnvironmentUpdateConfig(
+                command = listOf("screen", "-S", "%SESSION_NAME%", "-X")
+            ),
+            stop = EnvironmentStopConfig(
+                command = listOf("screen", "-S", "%SESSION_NAME%", "-X", "quit"),
             )
         )
     }

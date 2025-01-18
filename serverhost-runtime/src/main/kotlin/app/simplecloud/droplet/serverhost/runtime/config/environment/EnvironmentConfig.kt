@@ -6,12 +6,12 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 data class EnvironmentConfig(
     val enabled: Boolean = true,
     val isScreen: Boolean = false,
-    val useScreenStop: Boolean = false,
     val isDocker: Boolean = false,
     val name: String = "",
+    val update: EnvironmentUpdateConfig? = null,
     val start: EnvironmentStartConfig? = null,
     val stop: EnvironmentStopConfig? = null,
-    val version: String = "1",
+    val version: String = "2",
 ) {
     fun getExecutable(): String? {
         if (isDocker) return null

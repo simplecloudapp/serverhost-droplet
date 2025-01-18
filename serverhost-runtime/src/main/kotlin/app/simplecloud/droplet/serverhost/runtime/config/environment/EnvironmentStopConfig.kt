@@ -4,5 +4,5 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
 @ConfigSerializable
 data class EnvironmentStopConfig(
-    val docker: DockerStopConfig? = null,
+    val command: List<String>? = null,
 )
