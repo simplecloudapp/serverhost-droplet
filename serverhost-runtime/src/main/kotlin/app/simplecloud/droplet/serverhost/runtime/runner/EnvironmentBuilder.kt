@@ -9,15 +9,13 @@ interface EnvironmentBuilder<T> {
     fun createRuntimePlaceholders(server: Server): Map<String, String>
     fun buildRuntime(server: Server, repository: GroupRuntimeDirectory): GroupRuntime
     fun addAllWithPlaceholders(list: MutableList<String>, placeholders: Map<String, String>) {
-        val result = list.map {
+        list.replaceAll {
             var returned = it
             placeholders.keys.map { placeholder ->
                 returned = returned.replace(placeholder, placeholders.getOrDefault(placeholder, ""))
             }
-            return@map returned
+            return@replaceAll returned
         }
-        list.clear()
-        list.addAll(result)
     }
 
     fun getDefaultEnv(
