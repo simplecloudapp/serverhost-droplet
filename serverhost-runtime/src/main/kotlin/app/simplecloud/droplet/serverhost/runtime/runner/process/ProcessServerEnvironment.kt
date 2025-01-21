@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.runner
+package app.simplecloud.droplet.serverhost.runtime.runner.process
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
@@ -7,10 +7,12 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.shared.process.ProcessFinder
+import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
+import app.simplecloud.droplet.serverhost.runtime.runner.MetricsTracker
+import app.simplecloud.droplet.serverhost.runtime.runner.ServerEnvironment
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
-import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
@@ -19,13 +21,20 @@ import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
-import build.buf.gen.simplecloud.controller.v1.*
-import kotlinx.coroutines.*
+import app.simplecloud.droplet.serverhost.shared.process.ProcessFinder
+import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
+import build.buf.gen.simplecloud.controller.v1.ServerHostStreamServerLogsResponse
+import build.buf.gen.simplecloud.controller.v1.copy
+import build.buf.gen.simplecloud.controller.v1.updateServerRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
@@ -36,7 +45,7 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
 
-class DefaultServerEnvironment(
+class ProcessServerEnvironment(
     private val templateProvider: TemplateProvider,
     private val serverHost: ServerHost,
     private val args: ServerHostStartCommand,
@@ -67,22 +76,11 @@ class DefaultServerEnvironment(
         return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
     }
 
-    private fun updateServerCache(uniqueId: String, updated: Server) {
-        val key = serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
-        if (key == null) {
-            logger.warn("Server ${updated.group}-${updated.numericalId} could not be updated in cache")
-            return
-        }
-        val value = serverToProcessHandle[key]!!
-        serverToProcessHandle.remove(key)
-        serverToProcessHandle[updated] = value
+    override fun getServerCache(): MutableMap<Server, *> {
+        return serverToProcessHandle
     }
 
-    private suspend fun updateServer(server: Server?): Server? {
-        if (server == null) {
-            return null
-        }
-
+    override suspend fun updateServer(server: Server): Server? {
         // Retrieving this before the ping makes it possible to stop servers way sooner (port is registered in system nearly instantly, it takes longer for the
         // server to respond to pings though)
         val executable = getEnvironment(server)
@@ -104,30 +102,13 @@ class DefaultServerEnvironment(
         try {
             val ping = ServerPinger.ping(address)
             if (handle == null) return null
-            PortProcessHandle.removePreBind(server.port.toInt())
-            val controllerServer = controllerStub.getServerById(getServerByIdRequest {
-                this.serverId = server.uniqueId
-            })
-
-            val copiedServer = Server.fromDefinition(controllerServer.copy {
-                this.serverState =
-                    if (ping.description.text == "INGAME")
-                        ServerState.INGAME
-                    else if (server.state == ServerState.STARTING)
-                        ServerState.AVAILABLE
-                    else
-                        server.state
-                this.maxPlayers = ping.players.max.toLong()
-                this.playerCount = ping.players.online.toLong()
-                this.cloudProperties["motd"] = ping.description.text
-            })
+            val copiedServer = updateServer(server, ping, controllerStub)
             trackMetrics(copiedServer, handle, executable?.getExecutable())
             return copiedServer
         } catch (e: Exception) {
             logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
             val portBound = PortProcessHandle.isPortBound(server.port.toInt())
             if (!portBound) {
-                stopServer(server)
                 return null
             }
             return server
@@ -196,7 +177,7 @@ class DefaultServerEnvironment(
         }
         var ctx: YamlActionContext?
         copyTemplateMutex.withLock {
-            ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START)
+            ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START, templateProvider)
         }
 
         var serverDir: File? = null
@@ -231,19 +212,6 @@ class DefaultServerEnvironment(
 
     }
 
-    private fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes): YamlActionContext? {
-        val template = templateProvider.getLoadedTemplate(server.properties["template-id"] ?: "")
-        if (template != null) {
-            return templateProvider.execute(server, dir, template, on)
-        } else {
-            if (!server.properties.containsKey("template-id"))
-                logger.error("Group ${server.group} has no template defined!")
-            else
-                logger.error("Template ${server.properties["template-id"] ?: ""} of group ${server.group} was not found!")
-        }
-        return null
-    }
-
     private fun getServerDir(ctx: YamlActionContext): File? {
         val dir = ctx.retrieve<String>("server-dir") ?: return null
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx) ?: return null
@@ -256,7 +224,7 @@ class DefaultServerEnvironment(
         if (!stopped) return false
 
         copyTemplateMutex.withLock {
-            executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
+            executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP, templateProvider)
         }
 
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
@@ -281,10 +249,11 @@ class DefaultServerEnvironment(
         if (env != null && env.useScreenStop) {
             terminateScreenSession(process.pid())
         } else {
-            if (!forcibly)
+            if (!forcibly) {
                 process.destroy()
-            else
+            } else {
                 process.destroyForcibly()
+            }
         }
 
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
@@ -326,7 +295,7 @@ class DefaultServerEnvironment(
 
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
-            executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP)
+            executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP, templateProvider)
             PortProcessHandle.removePreBind(server.port.toInt(), true)
             return false
         }
@@ -340,8 +309,10 @@ class DefaultServerEnvironment(
         if (getEnvironment(server)?.isScreen != true) return false
         val process = getProcess(server.uniqueId)
             ?: return false
+
         val streamer = ScreenCommandExecutor(process.pid())
-        if(!streamer.isScreen()) return false
+        if (!streamer.isScreen()) return false
+
         streamer.sendCommand(command)
         return true
     }
@@ -368,21 +339,6 @@ class DefaultServerEnvironment(
         return env.enabled && env.start?.command != null
     }
 
-    private fun createRuntimePlaceholders(server: Server): MutableMap<String, String> {
-        val placeholders = mutableMapOf(
-            "%MIN_MEMORY%" to server.minMemory.toString(),
-            "%MAX_MEMORY%" to server.maxMemory.toString(),
-            "%SCREEN_NAME%" to "${server.group}-${server.numericalId}-${server.uniqueId.substring(0, 6)}",
-            "%NUMERICAL_ID%" to server.numericalId.toString(),
-            "%GROUP%" to server.group,
-            "%UNIQUE_ID%" to server.uniqueId,
-        )
-        placeholders.putAll(server.properties.map {
-            "%${it.key.uppercase().replace("-", "_")}%" to it.value
-        })
-        return placeholders
-    }
-
     private fun terminateScreenSession(pid: Long) {
         try {
             logger.info("Terminating screen $pid")
@@ -400,20 +356,11 @@ class DefaultServerEnvironment(
         return runtimeConfig == null || runtimeConfig.ignore != true
     }
 
-    private fun createDefaultEnvironment(): String {
-        if (ScreenCapabilities.isScreenAvailable()) {
-            return "screen"
-        }
-        return "default"
-    }
-
     private fun buildProcess(serverDir: File?, server: Server, runtimeConfig: GroupRuntime?): ProcessBuilder {
+        val envBuilder = ProcessEnvironmentBuilder(serverHost, args)
         var runtime = runtimeConfig
         if (runtimeConfig == null) {
-            val defaultEnv: String = createDefaultEnvironment()
-            val newRuntime = GroupRuntime(defaultEnv, null, null)
-            runtimeRepository.save("${server.group}.yml", newRuntime)
-            runtime = newRuntime
+            runtime = envBuilder.buildRuntime(server, runtimeRepository)
         }
         val env = environmentsRepository.get(runtime)
         if (env?.enabled != true) {
@@ -427,7 +374,7 @@ class DefaultServerEnvironment(
         if (!logFile.parent.exists()) {
             FileUtils.createParentDirectories(logFile.toFile())
         }
-        val placeholders = createRuntimePlaceholders(server)
+        val placeholders = envBuilder.createRuntimePlaceholders(server).toMutableMap()
         placeholders.putAll(
             mapOf(
                 "%MAIN_CLASS%" to JarMainClass.find(serverJar),
@@ -436,61 +383,19 @@ class DefaultServerEnvironment(
             )
         )
         val command = mutableListOf<String>()
-
-        command.addAllWithPlaceholders(env.start.command, placeholders)
+        command.addAll(env.start.command)
+        envBuilder.addAllWithPlaceholders(command, placeholders)
         val builder = ProcessBuilder()
             .command(command)
             .directory(serverDir ?: getServerDir(server, runtimeConfig))
-        builder.environment()["HOST_IP"] = serverHost.host
-        builder.environment()["HOST_PORT"] = serverHost.port.toString()
-        builder.environment()["CONTROLLER_HOST"] = this.args.grpcHost
-        builder.environment()["CONTROLLER_PORT"] = this.args.grpcPort.toString()
-        builder.environment()["CONTROLLER_SECRET"] = this.args.authSecret
-        builder.environment()["CONTROLLER_PUBSUB_HOST"] = this.args.pubSubGrpcHost
-        builder.environment()["CONTROLLER_PUBSUB_PORT"] = this.args.pubSubGrpcPort.toString()
-        builder.environment().putAll(server.toEnv())
-        if (!env.isScreen)
+        builder.environment().putAll(envBuilder.buildEnv(server))
+        if (!env.isScreen) {
             builder.redirectOutput(logFile.toFile())
+        }
         return builder
     }
 
-
-    override fun startServerStateChecker(): Job {
-        return CoroutineScope(Dispatchers.IO).launch {
-            while (isActive) {
-                serverToProcessHandle.keys.toList().forEach {
-
-                    var delete = false
-                    var server = it
-                    try {
-                        val updated = updateServer(it)
-                        if (updated == null) delete = true
-                        else {
-                            server = updated
-                            updateServerCache(updated.uniqueId, updated)
-                        }
-                        controllerStub.updateServer(
-                            UpdateServerRequest.newBuilder()
-                                .setServer(server.toDefinition())
-                                .setDeleted(delete).build()
-                        )
-                    } catch (e: Exception) {
-                        logger.error("An error occurred whilst updating the server:", e)
-                    }
-                }
-                delay(5000L)
-            }
-        }
+    override fun getServers(): List<Server> {
+        return serverToProcessHandle.keys.toList()
     }
-
-    private fun MutableList<String>.addAllWithPlaceholders(commands: List<String>, placeholders: Map<String, String>) {
-        addAll(commands.map {
-            var returned = it
-            placeholders.keys.map { placeholder ->
-                returned = returned.replace(placeholder, placeholders.getOrDefault(placeholder, ""))
-            }
-            return@map returned
-        })
-    }
-
 }

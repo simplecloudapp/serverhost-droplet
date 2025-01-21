@@ -1,0 +1,4 @@
+when:
+  start:
+    - default/setup
+    - docker/setup

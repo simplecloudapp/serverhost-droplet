@@ -1,11 +1,11 @@
-package app.simplecloud.droplet.serverhost.shared.actions.impl
+package app.simplecloud.droplet.serverhost.shared.actions.impl.placeholder
 
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlAction
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 
-object PlaceholderAction: YamlAction<PlaceHolderActionData> {
-    override fun exec(ctx: YamlActionContext, data: PlaceHolderActionData) {
+object PlaceholderAction: YamlAction<PlaceholderActionData> {
+    override fun exec(ctx: YamlActionContext, data: PlaceholderActionData) {
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx)
             ?: throw NullPointerException("placeholder context is required but was not found")
         var result = placeholders.parse(data.value)
@@ -18,7 +18,7 @@ object PlaceholderAction: YamlAction<PlaceHolderActionData> {
         placeholders.save(ctx)
     }
 
-    override fun getDataType(): Class<PlaceHolderActionData> {
-        return PlaceHolderActionData::class.java
+    override fun getDataType(): Class<PlaceholderActionData> {
+        return PlaceholderActionData::class.java
     }
 }

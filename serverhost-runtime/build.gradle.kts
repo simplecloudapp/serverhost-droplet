@@ -7,7 +7,6 @@ dependencies {
     api(rootProject.libs.kotlin.coroutines)
     implementation(rootProject.libs.simplecloud.metrics)
     implementation(rootProject.libs.bundles.log4j)
-    implementation(rootProject.libs.clikt)
 }
 
 application {

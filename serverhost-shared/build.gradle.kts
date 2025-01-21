@@ -15,7 +15,9 @@ dependencies {
     implementation(rootProject.libs.ktor.cio)
     testImplementation(rootProject.libs.kotlin.test)
     implementation(rootProject.libs.commons.compress)
+    api(rootProject.libs.bundles.docker)
     implementation(rootProject.libs.xz)
+    implementation(rootProject.libs.jib)
 }
 
 publishing {

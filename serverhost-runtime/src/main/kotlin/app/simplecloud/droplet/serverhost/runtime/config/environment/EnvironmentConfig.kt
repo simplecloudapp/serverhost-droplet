@@ -8,6 +8,8 @@ data class EnvironmentConfig(
     val isScreen: Boolean = false,
     val useScreenStop: Boolean = false,
     val isDocker: Boolean = false,
+    val buildPolicy: BuildPolicy = BuildPolicy.NEVER,
+    val imagePullPolicy: ImagePullPolicy = ImagePullPolicy.NEVER,
     val name: String = "",
     val start: EnvironmentStartConfig? = null,
     val stop: EnvironmentStopConfig? = null,

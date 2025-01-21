@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.shared.actions.impl
+package app.simplecloud.droplet.serverhost.shared.actions.impl.delete
 
 import org.spongepowered.configurate.objectmapping.ConfigSerializable
 
