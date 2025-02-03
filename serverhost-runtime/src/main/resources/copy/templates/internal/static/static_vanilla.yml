@@ -1,7 +1,0 @@
-extends: "every_vanilla"
-destinations:
-  - copy-from: "static/%SERVER%"
-    copy-to: ""
-shutdown-destinations:
-  - copy-from: ""
-    copy-to: "static/%SERVER%"

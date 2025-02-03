@@ -1,0 +1,75 @@
+init-placeholders:
+  - key: "software"
+    field: "$.server-software"
+    lowercase: true
+    type: "infer"
+  - key: "version"
+    field: "$.minecraft-version"
+    lowercase: true
+    type: "infer"
+  - key: "configurator"
+    field: "$.configurator"
+    type: "infer"
+  - key: "type"
+    field: "type"
+    lowercase: true
+    type: "infer"
+  - key: "group"
+    field: "group"
+    type: "infer"
+  - key: "numerical-id"
+    field: "numericalId"
+    type: "infer"
+  - key: "server"
+    value: "%group%-%numerical-id%"
+    type: "placeholder"
+
+copy:
+  - from: "%templates%/%group%"
+    to: "%server-dir%"
+    init-dir-if-missing: true
+    replace: false
+    type: "copy"
+
+configurate:
+  - configurator: "%configurator%"
+    dir: "%server-dir%"
+    type: "configurate"
+
+static-dir:
+  - key: "server-dir"
+    value: "%running%/static/%group%/%server%"
+    type: "placeholder"
+
+every:
+  - from: "%templates%/every"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"
+
+every-with-type:
+  - ref: every
+  - from: "%templates%/every_%type%"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"
+
+every-with-software:
+  - ref: every-with-type
+  - from: "%templates%/every_%software%"
+    to: "%server-dir%"
+    replace: false
+    type: "copy"
+
+copy-droplet-plugins:
+  - from: "%templates%/droplet-plugins/%software%"
+    to: "%server-dir%/plugins"
+    init-dir-if-missing: false
+    replace: false
+    type: "copy"
+copy-sc-plugins:
+  - from: "%templates%/sc-plugins/%software%"
+    to: "%server-dir%/plugins"
+    init-dir-if-missing: false
+    replace: false
+    type: "copy"

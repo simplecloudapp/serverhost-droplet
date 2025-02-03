@@ -1,0 +1,5 @@
+when:
+  start:
+    - default/setup
+  stop:
+    - default/delete

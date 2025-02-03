@@ -1,4 +1,0 @@
-extends: "every"
-destinations:
-  - copy-from: "every_proxy"
-    copy-to: ""

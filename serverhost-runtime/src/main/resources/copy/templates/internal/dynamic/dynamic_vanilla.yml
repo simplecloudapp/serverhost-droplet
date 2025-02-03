@@ -1,4 +1,0 @@
-extends: "every_vanilla"
-destinations:
-  - copy-from: "%GROUP%"
-    copy-to: ""

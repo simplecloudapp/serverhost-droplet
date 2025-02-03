@@ -1,4 +1,0 @@
-extends: "every_server"
-destinations:
-  - copy-from: "every_spigot"
-    copy-to: ""

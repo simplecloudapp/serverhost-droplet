@@ -1,3 +1,0 @@
-destinations:
-  - copy-from: "every"
-    copy-to: ""

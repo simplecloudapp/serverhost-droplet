@@ -1,0 +1,3 @@
+when:
+  start:
+    - default/static-setup

@@ -1,4 +1,0 @@
-extends: "every_spigot"
-destinations:
-  - copy-from: "every_paper"
-    copy-to: ""

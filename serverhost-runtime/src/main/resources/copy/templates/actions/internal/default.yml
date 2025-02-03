@@ -1,0 +1,19 @@
+static-setup:
+  - ref: util/init-placeholders
+  - ref: util/static-dir
+  - ref: default/setup
+
+setup:
+  - ref: util/init-placeholders
+  - ref: cache/cache-pull
+  - ref: util/every-with-software
+  - ref: util/copy
+  - ref: util/copy-droplet-plugins
+  - ref: util/copy-sc-plugins
+  - ref: util/configurate
+
+delete:
+  - ref: util/init-placeholders
+  - ref: cache/cache-push
+  - path: "%server-dir%"
+    type: "delete"

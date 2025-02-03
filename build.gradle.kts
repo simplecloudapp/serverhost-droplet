@@ -9,12 +9,12 @@ plugins {
 allprojects {
 
     group = "app.simplecloud.droplet"
-    version = "0.0.2-EXPERIMENTAL"
+    version = "0.0.2"
 
     repositories {
         mavenCentral()
-        mavenLocal()
         maven("https://buf.build/gen/maven")
+        maven("https://repo.simplecloud.app/snapshots")
     }
 }
 
@@ -23,8 +23,8 @@ subprojects {
     apply(plugin = "com.github.johnrengelman.shadow")
 
     dependencies {
-        testImplementation(rootProject.libs.kotlinTest)
-        implementation(rootProject.libs.kotlinJvm)
+        testImplementation(rootProject.libs.kotlin.test)
+        implementation(rootProject.libs.kotlin.jvm)
     }
 
     kotlin {
