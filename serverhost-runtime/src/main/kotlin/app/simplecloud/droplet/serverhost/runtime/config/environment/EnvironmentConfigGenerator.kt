@@ -1,6 +1,7 @@
 package app.simplecloud.droplet.serverhost.runtime.config.environment
 
 import app.simplecloud.droplet.serverhost.runtime.config.YamlDirectoryRepository
+import app.simplecloud.droplet.serverhost.runtime.config.environment.generators.DefaultDockerConfigGenerator
 import app.simplecloud.droplet.serverhost.runtime.config.environment.generators.DefaultEnvironmentConfigGenerator
 import app.simplecloud.droplet.serverhost.runtime.config.environment.generators.ScreenEnvironmentConfigGenerator
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
@@ -10,11 +11,10 @@ interface EnvironmentConfigGenerator {
     fun getName(): String
 
     companion object {
-
-
         fun generateAll(args: ServerHostStartCommand, repository: YamlDirectoryRepository<EnvironmentConfig>) {
             repository.save("screen.yml", ScreenEnvironmentConfigGenerator.generate(args), false)
             repository.save("default.yml", DefaultEnvironmentConfigGenerator.generate(args), false)
+            repository.save("docker.yml", DefaultDockerConfigGenerator.generate(args), false)
         }
     }
 }

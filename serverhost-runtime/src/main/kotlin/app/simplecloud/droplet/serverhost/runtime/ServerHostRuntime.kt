@@ -6,9 +6,9 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.host.ServerHostService
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
-import app.simplecloud.droplet.serverhost.runtime.runner.MetricsTracker
-import app.simplecloud.droplet.serverhost.runtime.runner.ServerEnvironments
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
+import app.simplecloud.droplet.serverhost.runtime.environment.MetricsTracker
+import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironments
 import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
@@ -16,6 +16,7 @@ import app.simplecloud.droplet.serverhost.shared.grpc.ServerHostGrpc
 import app.simplecloud.droplet.serverhost.shared.resources.ResourceCopier
 import app.simplecloud.pubsub.PubSubClient
 import build.buf.gen.simplecloud.controller.v1.ControllerDropletServiceGrpcKt
+import build.buf.gen.simplecloud.controller.v1.ControllerGroupServiceGrpcKt
 import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
 import io.grpc.Server
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +50,8 @@ class ServerHostRuntime(
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
     private val controllerStub = ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub(controllerChannel)
         .withCallCredentials(authCallCredentials)
+    private val groupStub = ControllerGroupServiceGrpcKt.ControllerGroupServiceCoroutineStub(controllerChannel)
+        .withCallCredentials(authCallCredentials)
     private val controllerDropletStub =
         ControllerDropletServiceGrpcKt.ControllerDropletServiceCoroutineStub(controllerChannel)
             .withCallCredentials(authCallCredentials)
@@ -59,6 +62,7 @@ class ServerHostRuntime(
         serverHost,
         serverHostStartCommand,
         controllerStub,
+        groupStub,
         MetricsTracker(pubSubClient),
         environmentsRepository,
         GroupRuntimeDirectory()
@@ -69,12 +73,13 @@ class ServerHostRuntime(
     suspend fun start() {
         logger.info("Starting ServerHost ${serverHost.id} on ${serverHost.host}:${serverHost.port}...")
         startGrpcServer()
-        attach()
         resourceCopier.copyAll("copy")
         actionProvider.load()
         templateProvider.load()
         startFileSystemWatcher()
-        environments.getAll().forEach { env -> env.startServerStateChecker() }
+        attach()
+        environments.buildAll()
+        environments.startServerStateChecker()
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
                 server.shutdown()
@@ -104,11 +109,11 @@ class ServerHostRuntime(
         templateSnapshotCache.registerWatcher()
     }
 
-
-    private fun attach() {
+    private suspend fun attach() {
         logger.info("Attaching to controller...")
         val attacher =
             Attacher(serverHost, controllerChannel, controllerDropletStub)
+        attacher.enforceAttachBlocking()
         attacher.enforceAttach()
     }
 

@@ -5,7 +5,7 @@ import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.ServerEnvironments
+import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironments
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import build.buf.gen.simplecloud.controller.v1.*
 import com.google.protobuf.ByteString

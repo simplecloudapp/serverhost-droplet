@@ -1,15 +1,19 @@
 package app.simplecloud.droplet.serverhost.runtime.template
 
 import app.simplecloud.controller.shared.server.Server
+import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
+import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
+import app.simplecloud.droplet.serverhost.shared.docker.DockerClientInstance
 import app.simplecloud.droplet.serverhost.shared.template.YamlTemplate
 import app.simplecloud.droplet.serverhost.shared.template.YamlTemplateExecutor
 import app.simplecloud.droplet.serverhost.shared.template.YamlTemplateLoader
+import com.github.dockerjava.api.DockerClient
 import org.apache.logging.log4j.LogManager
 import java.nio.file.Path
+import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.isDirectory
 
@@ -42,7 +46,9 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
     /**
      * @return the [YamlActionContext] for extended usage in internal functionality
      */
-    fun execute(server: Server, serverDir: Path, template: YamlTemplate, on: YamlActionTriggerTypes): YamlActionContext {
+    fun execute(
+        server: Server, serverDir: Path, template: YamlTemplate, on: YamlActionTriggerTypes
+    ): YamlActionContext {
         val executor = YamlTemplateExecutor(actionProvider.getLoadedActions())
         val ctx = YamlActionContext()
         val placeholders = YamlActionPlaceholderContext()
@@ -55,9 +61,23 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         ctx.store("forwarding-secret", args.forwardingSecret)
         ctx.store("server", server)
         ctx.store("actions", actionProvider.getLoadedActions())
+        ctx.store("docker-client", getDockerClient() ?: Any())
+        ctx.store("server-jar", ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"] ?: "").toPath())
+        ctx.store("configurator-jar", Paths.get("cache", "jars", "configurator.jar"))
+        ctx.store("last-checksum", server.properties["last-checksum"] ?: "")
+        ctx.store("libs", args.libsPath)
         executor.execute(template, on, ctx).forEach { exception ->
             logger.warn(exception.message ?: "Unknown error on template of group ${server.group}")
         }
         return ctx
+    }
+
+    private fun getDockerClient(): DockerClient? {
+        try {
+            return DockerClientInstance.new(args.dockerConfigPath)
+        } catch (e: Exception) {
+            logger.warn("Could not instantiate docker client.", e)
+            return null
+        }
     }
 }
