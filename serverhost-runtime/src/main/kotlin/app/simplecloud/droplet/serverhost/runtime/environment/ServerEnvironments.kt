@@ -1,14 +1,13 @@
-package app.simplecloud.droplet.serverhost.runtime.runner
+package app.simplecloud.droplet.serverhost.runtime.environment
 
 import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.api.time.ProtobufTimestamp
-import app.simplecloud.droplet.serverhost.runtime.config.environment.BuildPolicy
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
+import app.simplecloud.droplet.serverhost.runtime.environment.docker.DockerServerEnvironment
+import app.simplecloud.droplet.serverhost.runtime.environment.process.ProcessServerEnvironment
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.docker.DockerServerEnvironment
-import app.simplecloud.droplet.serverhost.runtime.runner.process.ProcessServerEnvironment
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.*
@@ -65,10 +64,9 @@ class ServerEnvironments(
      */
     fun of(uniqueId: String): ServerEnvironment? {
         return envs.firstOrNull {
-            it.getServer(uniqueId)?.let { server ->
-                it.getEnvironment(server)
-                    ?.let { env -> it.appliesFor(env) || it.appliesFor(server) }
-            } ?: false
+            val server = it.getServer(uniqueId) ?: return@firstOrNull false
+            val env = it.getEnvironment(server) ?: return@firstOrNull false
+            return@firstOrNull it.appliesFor(env) || it.appliesFor(server)
         }
     }
 
@@ -76,7 +74,7 @@ class ServerEnvironments(
         return envs
     }
 
-    suspend fun buildAll(context: BuildPolicy = BuildPolicy.ONCE) {
+    suspend fun buildAll(context: BuildContext = BuildContext.STARTUP) {
         logger.info("Building all server groups.")
         val servers =
             groupStub.getAllGroups(getAllGroupsRequest { }).groupsList.map { buildServer(Group.fromDefinition(it)) }
@@ -84,7 +82,8 @@ class ServerEnvironments(
         var count = 0
         servers.forEach { server ->
             val env = envs.firstOrNull {
-                it.getEnvironment(server)?.let { env -> it.appliesFor(env) } ?: false || it.appliesFor(server)
+                val env = it.getEnvironment(server) ?: return@firstOrNull it.appliesFor(server)
+                return@firstOrNull it.appliesFor(env)
             }
                 ?: return@forEach
             count++
@@ -98,7 +97,8 @@ class ServerEnvironments(
      */
     fun firstFor(server: Server): ServerEnvironment {
         return envs.firstOrNull {
-            it.getEnvironment(server)?.let { env -> it.appliesFor(env) } ?: false || it.appliesFor(server)
+            val env = it.getEnvironment(server) ?: return@firstOrNull it.appliesFor(server)
+            return@firstOrNull it.appliesFor(env)
         } ?: process
     }
 

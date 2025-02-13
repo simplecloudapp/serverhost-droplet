@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.runner.docker
+package app.simplecloud.droplet.serverhost.runtime.environment.docker
 
 import app.simplecloud.droplet.serverhost.runtime.config.environment.BuildPolicy
 import app.simplecloud.droplet.serverhost.runtime.config.environment.ImagePullPolicy

@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.runner
+package app.simplecloud.droplet.serverhost.runtime.environment
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server

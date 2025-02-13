@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.runner.process
+package app.simplecloud.droplet.serverhost.runtime.environment.process
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
@@ -7,10 +7,10 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
-import app.simplecloud.droplet.serverhost.runtime.runner.MetricsTracker
-import app.simplecloud.droplet.serverhost.runtime.runner.ServerEnvironment
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
+import app.simplecloud.droplet.serverhost.runtime.environment.MetricsTracker
+import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironment
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext

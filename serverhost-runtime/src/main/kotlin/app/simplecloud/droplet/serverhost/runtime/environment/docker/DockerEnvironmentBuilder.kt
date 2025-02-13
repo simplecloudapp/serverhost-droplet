@@ -1,4 +1,4 @@
-package app.simplecloud.droplet.serverhost.runtime.runner.docker
+package app.simplecloud.droplet.serverhost.runtime.environment.docker
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
@@ -6,9 +6,9 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.DockerStart
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.EnvironmentBuilder
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
+import app.simplecloud.droplet.serverhost.runtime.environment.EnvironmentBuilder
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 
 class DockerEnvironmentBuilder(
@@ -21,7 +21,11 @@ class DockerEnvironmentBuilder(
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
-            "%MAIN_CLASS%" to JarMainClass.find(ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"] ?: "").toPath())
+            "%MAIN_CLASS%" to JarMainClass.find(
+                ServerVersionLoader.getAndDownloadServerJar(
+                    server.properties["server-url"] ?: ""
+                ).toPath()
+            )
         )
         placeholders.putAll(server.properties.map {
             "%${it.key.uppercase().replace("-", "_")}%" to it.value
@@ -39,12 +43,14 @@ class DockerEnvironmentBuilder(
         val result = mutableListOf<String>()
         val dockerConf = config.start?.docker ?: DockerStartConfig()
         server.toEnv().forEach {
-            if (dockerConf.envMappings.containsKey(it.key))
+            if (dockerConf.envMappings.containsKey(it.key)) {
                 result.add("${dockerConf.envMappings[it.key]}=${it.value}")
+            }
             result.add("${it.key}=${it.value}")
         }
-        if (dockerConf.envMappings.containsKey("FORWARDING_SECRET"))
+        if (dockerConf.envMappings.containsKey("FORWARDING_SECRET")) {
             result.add("${dockerConf.envMappings["FORWARDING_SECRET"]}=${args.forwardingSecret}")
+        }
         result.add("FORWARDING_SECRET=${args.forwardingSecret}")
         getDefaultEnv(serverHost, args).forEach { (key, value) ->
             result.add("$key=$value")

@@ -1,11 +1,11 @@
-package app.simplecloud.droplet.serverhost.runtime.runner.process
+package app.simplecloud.droplet.serverhost.runtime.environment.process
 
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.EnvironmentBuilder
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntimeDirectory
+import app.simplecloud.droplet.serverhost.runtime.environment.EnvironmentBuilder
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.util.ScreenCapabilities
 
 class ProcessEnvironmentBuilder(private val serverHost: ServerHost, private val args: ServerHostStartCommand) :

@@ -2,7 +2,7 @@ package app.simplecloud.droplet.serverhost.runtime.config.environment
 
 import app.simplecloud.droplet.serverhost.runtime.config.YamlDirectoryRepository
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
 import org.apache.logging.log4j.LogManager
 
 class EnvironmentConfigRepository(args: ServerHostStartCommand) :
