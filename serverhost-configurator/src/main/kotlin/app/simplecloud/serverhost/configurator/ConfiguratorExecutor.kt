@@ -14,9 +14,13 @@ class ConfiguratorExecutor {
         forwardingSecret: String,
         replace: Boolean = true
     ): Boolean {
-        val configLoader = YamlConfig("options/configurators")
-        val content = configLoader.loadFile("$configurator.yml") ?: return false
-        return configurateContent(configurable, content, destination, forwardingSecret, replace)
+        return configurateFile(
+            configurable,
+            YamlConfig("options/configurators").getPath("$configurator.yml"),
+            destination,
+            forwardingSecret,
+            replace
+        )
     }
 
     fun configurateFile(

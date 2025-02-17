@@ -9,6 +9,7 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
 import java.io.FileFilter
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.isDirectory
 import kotlin.io.path.nameWithoutExtension
@@ -88,6 +89,10 @@ open class YamlConfig(private val dirPath: String) {
     fun loadFile(path: String): String? {
         val file = File(dirPath, path)
         return loadFile(file)
+    }
+
+    fun getPath(path: String): Path {
+        return Paths.get(dirPath, path)
     }
 
     open fun <T> save(path: String?, obj: T) {
