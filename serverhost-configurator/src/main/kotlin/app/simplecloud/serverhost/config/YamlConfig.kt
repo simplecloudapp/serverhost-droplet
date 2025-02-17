@@ -9,6 +9,7 @@ import org.spongepowered.configurate.yaml.YamlConfigurationLoader
 import java.io.File
 import java.io.FileFilter
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import kotlin.io.path.isDirectory
 import kotlin.io.path.nameWithoutExtension
@@ -90,9 +91,24 @@ open class YamlConfig(private val dirPath: String) {
         return loadFile(file)
     }
 
+    fun getPath(path: String): Path {
+        return Paths.get(dirPath, path)
+    }
+
     open fun <T> save(path: String?, obj: T) {
         val pair = buildNode(path)
         pair.first.set(obj)
         pair.second.save(pair.first)
+    }
+
+    companion object {
+        inline fun <reified T> loadYaml(yml: String): T? {
+            val node = YamlConfigurationLoader.builder().defaultOptions {
+                it.serializers { builder ->
+                    builder.registerAnnotatedObjects(objectMapperFactory())
+                }
+            }.buildAndLoadString(yml)
+            return objectMapper<T>().load(node)
+        }
     }
 }

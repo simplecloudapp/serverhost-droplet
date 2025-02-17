@@ -11,7 +11,9 @@ dependencies {
     implementation(rootProject.libs.kotlin.reflect)
     implementation(rootProject.libs.ktor.cio)
     implementation(rootProject.libs.commons.compress)
+    api(rootProject.libs.bundles.docker)
     implementation(rootProject.libs.xz)
+    implementation(rootProject.libs.jib)
 
     testImplementation(rootProject.libs.kotlin.test)
 }

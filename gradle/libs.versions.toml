@@ -9,6 +9,7 @@ simplecloud-controller = "0.0.30-dev.e5b5ab8"
 simplecloud-pubsub = "1.0.4"
 simplecloud-metrics = "1.0.0"
 commons-io = "2.15.1"
+docker-java = "3.4.1"
 configurate = "4.1.2"
 clikt = "5.0.1"
 toml4j = "0.7.2"
@@ -16,6 +17,8 @@ gson = "2.11.0"
 commons-compress = "1.27.1"
 xz = "1.10"
 ktor-cio = "3.0.3"
+jib = "0.27.2"
+plexus = "3.0.16"
 github = "1.326"
 okhttp = "4.12.0"
 
@@ -28,6 +31,8 @@ kotlin-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", 
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+
+plexus-utils = { module = "org.codehaus.plexus:plexus-utils", version.ref = "plexus" }
 
 github = { module = "org.kohsuke:github-api", version.ref = "github" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
@@ -57,6 +62,12 @@ night-config-toml = { module = "com.electronwill.night-config:toml", version.ref
 
 ktor-cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor-cio" }
 
+docker-java = { module = "com.github.docker-java:docker-java", version.ref = "docker-java" }
+docker-java-transport-http = { module = "com.github.docker-java:docker-java-transport-httpclient5", version.ref = "docker-java" }
+
+jib = { module = "com.google.cloud.tools:jib-core", version.ref = "jib" }
+
+
 [bundles]
 log4j = [
     "log4j-core",
@@ -71,6 +82,11 @@ configurate = [
 ]
 night-config = [
     "night-config-toml"
+]
+
+docker = [
+    "docker-java",
+    "docker-java-transport-http"
 ]
 
 [plugins]

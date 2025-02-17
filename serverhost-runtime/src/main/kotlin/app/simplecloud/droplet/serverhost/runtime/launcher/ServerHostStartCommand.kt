@@ -79,6 +79,13 @@ class ServerHostStartCommand(
         .path()
         .default(Path.of(".secrets", "auth.secret"))
 
+    val dockerConfigPath: Path by option(
+        help = "Path to docker config file (default: docker.properties)",
+        envvar = "DOCKER_CONFIG_PATH"
+    )
+        .path()
+        .default(Path.of("docker.properties"))
+
     val authSecret: String by option(help = "Auth secret", envvar = "AUTH_SECRET_KEY")
         .defaultLazy { AuthFileSecretFactory.loadOrCreate(authSecretPath) }
 

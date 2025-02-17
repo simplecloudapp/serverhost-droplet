@@ -2,13 +2,20 @@ package app.simplecloud.droplet.serverhost.runtime.config.environment
 
 import app.simplecloud.droplet.serverhost.runtime.config.YamlDirectoryRepository
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
-import app.simplecloud.droplet.serverhost.runtime.runner.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
+import org.apache.logging.log4j.LogManager
 
 class EnvironmentConfigRepository(args: ServerHostStartCommand) :
     YamlDirectoryRepository<EnvironmentConfig>(args.environmentsPath, EnvironmentConfig::class.java) {
+    private val logger = LogManager.getLogger(EnvironmentConfigRepository::class.java)
+
     init {
-        EnvironmentConfigGenerator.generateAll(args, this)
-        load()
+        try {
+            EnvironmentConfigGenerator.generateAll(args, this)
+            load()
+        } catch (e: Exception) {
+            logger.error(e)
+        }
     }
 
     fun get(name: String): EnvironmentConfig? {

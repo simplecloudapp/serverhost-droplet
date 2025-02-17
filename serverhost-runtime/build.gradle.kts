@@ -8,7 +8,6 @@ dependencies {
 
     implementation(rootProject.libs.simplecloud.metrics)
     implementation(rootProject.libs.bundles.log4j)
-    implementation(rootProject.libs.clikt)
 }
 
 application {

@@ -1,6 +1,6 @@
 package app.simplecloud.droplet.serverhost.shared.actions
 
-import app.simplecloud.droplet.serverhost.shared.actions.impl.CopyActionData
+import app.simplecloud.droplet.serverhost.shared.actions.impl.copy.CopyActionData
 
 object LoadResults {
     val FILE_LOAD_RESULT = listOf(
