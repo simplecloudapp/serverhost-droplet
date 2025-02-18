@@ -40,7 +40,7 @@ object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
         return EnvironmentConfig(
             name = getName(),
             isScreen = true,
-            useScreenStop = OS.get() == OS.LINUX,
+            useScreenStop = OS.get() != OS.WINDOWS,
             start = EnvironmentStartConfig(
                 command = command
             )
