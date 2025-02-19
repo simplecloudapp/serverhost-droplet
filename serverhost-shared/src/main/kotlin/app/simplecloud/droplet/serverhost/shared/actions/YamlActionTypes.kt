@@ -12,6 +12,7 @@ import app.simplecloud.droplet.serverhost.shared.actions.impl.download.DownloadA
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.GithubDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.modrinth.ModrinthDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.env.EnvAction
+import app.simplecloud.droplet.serverhost.shared.actions.impl.execute.ExecuteAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.infer.InferFromServerAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.placeholder.PlaceholderAction
 
@@ -30,5 +31,6 @@ enum class YamlActionTypes(val action: YamlAction<*>) {
     CONDITIONAL(ConditionalAction),
     CREATE_DIR(CreateDirAction),
     ENV(EnvAction),
-    CREATE_IMAGE(CreateImageAction);
+    CREATE_IMAGE(CreateImageAction),
+    EXECUTE(ExecuteAction);
 }
