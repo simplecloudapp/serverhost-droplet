@@ -1,8 +1,10 @@
 package app.simplecloud.droplet.serverhost.shared.hack
 
 import app.simplecloud.droplet.serverhost.shared.process.ProcessInfo
+import kotlinx.coroutines.*
 
 class ScreenExecutor(private val pid: Long) {
+
     private val screenSession: ScreenSession? = findScreenSession(pid)
 
     fun isScreen(): Boolean = screenSession != null
@@ -12,69 +14,99 @@ class ScreenExecutor(private val pid: Long) {
         executeScreenCommand(session, toSend)
     }
 
-    fun terminate(): Boolean {
+    suspend fun terminate(): Boolean {
         terminateChildProcesses(pid)
-        if (screenSession == null) return true
+        if (screenSession == null) {
+            return true
+        }
 
-        if (!terminateScreenSession()) return false
+        if (!terminateScreenSession()) {
+            return false
+        }
+
         return !checkSession(screenSession)
     }
 
-    private fun terminateScreenSession(): Boolean {
+    private suspend fun terminateScreenSession(): Boolean {
         val session = screenSession ?: return true
-        val quitProcess = ProcessBuilder("screen", "-S", session.name, "-X", "quit")
-            .redirectError(ProcessBuilder.Redirect.PIPE)
-            .start()
 
-        quitProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)
-        Thread.sleep(1000)
+        if (executeScreenAction(session, "quit")) {
+            return true
+        }
 
-        if (!checkSession(session)) return true
-
-        val killProcess = ProcessBuilder("screen", "-S", session.name, "-X", "kill")
-            .redirectError(ProcessBuilder.Redirect.PIPE)
-            .start()
-
-        killProcess.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)
-        Thread.sleep(1000)
-
-        if (!checkSession(session)) return true
+        if (executeScreenAction(session, "kill")) {
+            return true
+        }
 
         val process = ProcessHandle.of(session.pid).orElse(null) ?: return false
-        process.destroy()
-        Thread.sleep(500)
 
-        if (!checkSession(session)) return true
-
-        process.destroyForcibly()
-        Thread.sleep(500)
-
-        return true
+        return forceTerminateProcess(process)
     }
 
-    private fun terminateChildProcesses(pid: Long) {
-        val process = ProcessHandle.of(pid).orElse(null) ?: return
-        process.descendants().forEach { descendant ->
-            descendant.destroy()
-            Thread.sleep(100)
-            if (descendant.isAlive) {
-                descendant.destroyForcibly()
-                Thread.sleep(100)
+    private suspend fun executeScreenAction(session: ScreenSession, action: String): Boolean {
+        val process = ProcessBuilder("screen", "-S", session.name, "-X", action)
+            .redirectError(ProcessBuilder.Redirect.PIPE)
+            .start()
+
+        return withTimeoutOrNull(2000) {
+            val terminated = process.waitFor()
+            if (terminated != 0) {
+                process.destroyForcibly()
+                return@withTimeoutOrNull false
             }
+
+            delay(100)
+            !checkSession(session)
+        } ?: false
+    }
+
+    private suspend fun forceTerminateProcess(process: ProcessHandle): Boolean {
+        process.destroy()
+
+        if (waitForTermination(process, 60_000)) {
+            return true
+        }
+
+        process.destroyForcibly()
+
+        return waitForTermination(process, 10_000)
+    }
+
+    private suspend fun waitForTermination(process: ProcessHandle, timeoutMs: Long): Boolean {
+        return withTimeoutOrNull(timeoutMs) {
+            while (process.isAlive) {
+                delay(100)
+            }
+            true
+        } ?: false
+    }
+
+    private suspend fun terminateChildProcesses(pid: Long) {
+        val process = ProcessHandle.of(pid).orElse(null) ?: return
+        coroutineScope {
+            process.descendants()
+                .toList()
+                .map { descendant ->
+                    async {
+                        forceTerminateProcess(descendant)
+                    }
+                }
+                .awaitAll()
         }
     }
 
-    private fun checkSession(session: ScreenSession): Boolean {
+    private suspend fun checkSession(session: ScreenSession): Boolean {
         val process = ProcessBuilder("screen", "-S", session.name, "-Q", "select", ".")
             .redirectError(ProcessBuilder.Redirect.PIPE)
             .start()
 
-        if (!process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)) {
+        return withTimeoutOrNull(2000) {
+            val exitValue = process.waitFor()
+            exitValue == 0
+        } ?: run {
             process.destroyForcibly()
-            return true
+            true
         }
-
-        return process.exitValue() == 0
     }
 
     private fun findScreenSession(pid: Long): ScreenSession? {
@@ -106,4 +138,5 @@ class ScreenExecutor(private val pid: Long) {
     }
 
     private data class ScreenSession(val pid: Long, val name: String)
+
 }
