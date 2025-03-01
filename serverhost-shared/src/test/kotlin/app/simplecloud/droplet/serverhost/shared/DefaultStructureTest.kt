@@ -17,6 +17,7 @@ class DefaultStructureTest {
             val result = YamlTemplateLoader.load(templatesPath, actions)
             val templates = result.first
             println("${templates.size} templates loaded")
+            println("${actions.size} actions loaded")
             val errors = result.second
             errors.forEach { it.printStackTrace() }
             if (errors.isNotEmpty()) {

@@ -1,0 +1,14 @@
+luckperms:
+  - mod-id: "Vebnzrzj"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+prefixes: # Only a sample
+  - mod-id: "Vebnzrzj"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
