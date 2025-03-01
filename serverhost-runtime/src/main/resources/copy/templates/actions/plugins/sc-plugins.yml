@@ -1,0 +1,71 @@
+download-cloud-command:
+  - mod-id: "qZsNJQis"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-notify:
+  - mod-id: "daugEY3o"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-npcs:
+  - mod-id: "eyNPY9oJ"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-placeholder:
+  - mod-id: "U1XWdWNx"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-prefixes:
+  - mod-id: "FZ0Sdplu"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-proxy-essentials:
+  - mod-id: "WzfN2mLK"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-server-connection:
+  - mod-id: "4Vw4Mgla"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-server-registration:
+  - mod-id: "ddD5Gif1"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+
+download-signs:
+  - mod-id: "M2XJERK4"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"

@@ -1,0 +1,16 @@
+download-all:
+  - ref: plugins/download-proxy
+  - ref: plugins/download-server
+
+download-proxy:
+  - ref: sc-plugins/download-cloud-command
+  - ref: sc-plugins/download-notify
+  - ref: sc-plugins/download-proxy-essentials
+  - ref: sc-plugins/download-server-connection
+  - ref: sc-plugins/download-server-registration
+
+download-server:
+  - ref: sc-plugins/download-npcs
+  - ref: sc-plugins/download-placeholder
+  - ref: sc-plugins/download-prefixes
+  - ref: sc-plugins/download-signs

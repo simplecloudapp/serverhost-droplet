@@ -67,9 +67,3 @@ copy-droplet-plugins:
     init-dir-if-missing: false
     replace: false
     type: "copy"
-copy-sc-plugins:
-  - from: "%templates%/sc-plugins/%software%"
-    to: "%server-dir%/plugins"
-    init-dir-if-missing: false
-    replace: false
-    type: "copy"
