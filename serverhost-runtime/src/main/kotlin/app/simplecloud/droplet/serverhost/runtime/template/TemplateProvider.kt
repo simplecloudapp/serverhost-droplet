@@ -62,7 +62,10 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         ctx.store("server", server)
         ctx.store("actions", actionProvider.getLoadedActions())
         ctx.store("docker-client", getDockerClient() ?: Any())
-        ctx.store("server-jar", ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"] ?: "").toPath())
+        ctx.store(
+            "server-jar",
+            ServerVersionLoader.getAndDownloadServerJar(server.properties["server-url"] ?: "").toPath()
+        )
         ctx.store("configurator-jar", Paths.get("cache", "jars", "configurator.jar"))
         ctx.store("last-checksum", server.properties["last-checksum"] ?: "")
         ctx.store("libs", args.libsPath)
@@ -76,7 +79,7 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         try {
             return DockerClientInstance.new(args.dockerConfigPath)
         } catch (e: Exception) {
-            logger.warn("Could not instantiate docker client.", e)
+            logger.warn("Could not instantiate docker client: ${e.message}")
             return null
         }
     }

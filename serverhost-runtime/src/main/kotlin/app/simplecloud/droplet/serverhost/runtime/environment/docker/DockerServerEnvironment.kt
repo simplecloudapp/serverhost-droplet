@@ -63,7 +63,7 @@ class DockerServerEnvironment(
             dockerClient = DockerClientInstance.new(args.dockerConfigPath)
             return dockerClient
         } catch (e: Exception) {
-            logger.error("Could not instantiate docker client", e)
+            logger.warn("Could not instantiate docker client: ${e.message}")
             return null
         }
     }
