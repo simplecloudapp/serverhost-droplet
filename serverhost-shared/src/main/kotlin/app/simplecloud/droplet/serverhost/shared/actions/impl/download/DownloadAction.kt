@@ -13,7 +13,9 @@ import kotlin.io.path.exists
 
 object DownloadAction : YamlAction<DownloadActionData> {
 
-    private val httpClient by lazy { HttpClient() }
+    private fun httpClient(): HttpClient {
+        return HttpClient()
+    }
 
     override fun exec(ctx: YamlActionContext, data: DownloadActionData) {
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx)
@@ -35,7 +37,10 @@ object DownloadAction : YamlAction<DownloadActionData> {
         }
 
         runBlocking {
-            DownloadUtil.downloadFile(httpClient, url, file)
+            httpClient().use {
+                DownloadUtil.downloadFile(it, url, file)
+            }
+
         }
     }
 
