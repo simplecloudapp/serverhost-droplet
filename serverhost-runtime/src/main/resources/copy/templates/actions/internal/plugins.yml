@@ -1,0 +1,8 @@
+all:
+  - ref: proxy
+  - ref: server
+proxy:
+  - ref: download/luckperms
+server:
+  - ref: download/luckperms
+  - ref: download/prefixes

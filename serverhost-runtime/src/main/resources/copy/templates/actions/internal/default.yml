@@ -10,6 +10,7 @@ setup:
   - ref: util/copy
   - ref: util/copy-droplet-plugins
   - ref: util/copy-sc-plugins
+  - ref: plugins/all
   - ref: util/configurate
 
 delete:
