@@ -5,18 +5,19 @@ import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.ServerHostRuntime
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
 import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
-import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
-import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.environment.MetricsTracker
 import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironment
+import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
+import app.simplecloud.droplet.serverhost.shared.hack.ScreenExecutor
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
@@ -38,7 +39,6 @@ import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
-import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -246,25 +246,37 @@ class ProcessServerEnvironment(
         }
 
         val env = getEnvironment(server)
-        if (env != null && env.useScreenStop) {
-            terminateScreenSession(process.pid())
-        } else {
-            if (!forcibly) {
-                process.destroy()
-            } else {
-                process.destroyForcibly()
+        val screenExecutor = ScreenExecutor(process.pid())
+        if (env?.useScreenStop == true && screenExecutor.isScreen()) {
+            if (!screenExecutor.terminate()) {
+                logger.error("Failed to terminate screen session for server ${server.group}-${server.numericalId}")
             }
         }
 
+        process.descendants().forEach { child: ProcessHandle ->
+            if (forcibly) {
+                child.destroyForcibly()
+            } else {
+                child.destroy()
+            }
+        }
+
+        if (forcibly) {
+            process.destroyForcibly()
+        } else {
+            process.destroy()
+        }
+
+
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
-        try {
+        return try {
             process.onExit().await()
             serverToProcessHandle.remove(server)
             stopTries.remove(uniqueId)
-            return true
+            true
         } catch (e: Exception) {
-            e.printStackTrace()
-            return false
+            logger.error("Failed to stop server ${server.group}-${server.numericalId}", e)
+            false
         }
     }
 
@@ -339,18 +351,6 @@ class ProcessServerEnvironment(
         return env.enabled && env.start?.command != null
     }
 
-    private fun terminateScreenSession(pid: Long) {
-        try {
-            logger.info("Terminating screen $pid")
-            val process = ProcessBuilder("screen", "-S", pid.toString(), "-X", "quit")
-                .redirectErrorStream(true)
-                .start()
-
-            process.waitFor()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-    }
 
     private fun checkAcceptance(runtimeConfig: GroupRuntime?): Boolean {
         return runtimeConfig == null || runtimeConfig.ignore != true
@@ -398,4 +398,5 @@ class ProcessServerEnvironment(
     override fun getServers(): List<Server> {
         return serverToProcessHandle.keys.toList()
     }
+
 }
