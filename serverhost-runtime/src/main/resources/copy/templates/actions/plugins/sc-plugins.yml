@@ -5,6 +5,7 @@ download-cloud-command:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-notify:
   - mod-id: "daugEY3o"
@@ -13,6 +14,7 @@ download-notify:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-npcs:
   - mod-id: "eyNPY9oJ"
@@ -21,6 +23,7 @@ download-npcs:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-placeholder:
   - mod-id: "U1XWdWNx"
@@ -29,6 +32,7 @@ download-placeholder:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-prefixes:
   - mod-id: "FZ0Sdplu"
@@ -37,6 +41,7 @@ download-prefixes:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-proxy-essentials:
   - mod-id: "WzfN2mLK"
@@ -45,6 +50,7 @@ download-proxy-essentials:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-server-connection:
   - mod-id: "4Vw4Mgla"
@@ -53,6 +59,7 @@ download-server-connection:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-server-registration:
   - mod-id: "ddD5Gif1"
@@ -61,6 +68,7 @@ download-server-registration:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 download-signs:
   - mod-id: "M2XJERK4"
@@ -69,3 +77,4 @@ download-signs:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true

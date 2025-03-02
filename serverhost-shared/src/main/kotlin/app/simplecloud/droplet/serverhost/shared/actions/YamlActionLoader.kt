@@ -38,12 +38,19 @@ object YamlActionLoader {
             val flowEntries = group.actionFlowList.toSortedMap()
             for (flowEntry in flowEntries) {
                 when (flowEntry.value.first) {
-                    YamlActionDataDescriptor.DATA -> actions.add(
-                        Pair(
-                            group.actionDataList[flowEntry.value.second].type,
-                            group.actionDataList[flowEntry.value.second].data
+                    YamlActionDataDescriptor.DATA -> {
+                        val actionData = group.actionDataList[flowEntry.value.second]
+                        actions.add(
+                            Pair(
+                                actionData.type,
+                                YamlActionData(
+                                    type = actionData.type,
+                                    data = actionData.data,
+                                    async = actionData.async
+                                )
+                            )
                         )
-                    )
+                    }
 
                     YamlActionDataDescriptor.REF ->
                         actions.addAll(

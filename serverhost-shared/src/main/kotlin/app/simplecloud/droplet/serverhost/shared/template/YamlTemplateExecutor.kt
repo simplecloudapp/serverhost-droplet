@@ -1,7 +1,7 @@
 package app.simplecloud.droplet.serverhost.shared.template
 
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
-import app.simplecloud.droplet.serverhost.shared.actions.YamlActionGroupExecutor
+import app.simplecloud.droplet.serverhost.shared.actions.ParallelActionGroupExecutor
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTypes
 
@@ -10,7 +10,7 @@ open class YamlTemplateExecutor(
 ) {
 
     open fun execute(template: YamlTemplate, on: YamlActionTriggerTypes, context: YamlActionContext = YamlActionContext()): List<Exception> {
-        val groupExecutor = YamlActionGroupExecutor(context, loadedActions)
+        val groupExecutor = ParallelActionGroupExecutor(context, loadedActions)
         val toExecute = template.actionMap.getOrDefault(on, listOf())
         val errors = mutableListOf<Exception>()
         toExecute.forEach { action ->

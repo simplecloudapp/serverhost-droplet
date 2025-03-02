@@ -45,11 +45,9 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
     private data class ProjectInfo(
         var name: String = "",
         var versionNumber: String = "",
-        val gameVersions: MutableList<String> = mutableListOf(),
-        val loaders: MutableList<String> = mutableListOf()
+        val gameVersions: List<String> = mutableListOf(),
+        val loaders: List<String> = mutableListOf()
     )
-
-    private var projectInfo = ProjectInfo()
 
     override fun exec(ctx: YamlActionContext, data: ModrinthDownloadActionData): Unit = runBlocking {
         try {
@@ -62,10 +60,10 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
 
             withContext(Dispatchers.IO) {
                 httpClient().use { client ->
-                    retrievePluginInformation(client, modId)
-                    validateInputs(client, modId, loader, gameVersion)
+                    val projectInfo = retrievePluginInformation(client, modId)
+                    validateInputs(client, modId, loader, gameVersion, projectInfo)
 
-                    val downloadUrl = retrievePluginDownloadUrl(client, modId, loader, gameVersion)
+                    val downloadUrl = retrievePluginDownloadUrl(client, modId, loader, gameVersion, projectInfo)
                     require(downloadUrl.isNotBlank()) { "Download URL is blank, please check your provided parameters" }
 
                     val fileName = "${projectInfo.name}-$gameVersion-${projectInfo.versionNumber}.jar"
@@ -85,8 +83,6 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
             }
         } catch (e: Exception) {
             logger.error(e)
-        } finally {
-            cleanup()
         }
     }
 
@@ -94,28 +90,27 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
         return ModrinthDownloadActionData::class.java
     }
 
-    private suspend fun retrievePluginInformation(client: HttpClient, id: String) {
+    private suspend fun retrievePluginInformation(client: HttpClient, id: String): ProjectInfo {
         val url = "$BASE_API_URL/project/$id"
         val response = client.get(url)
         require(response.status == HttpStatusCode.OK) { "Failed to retrieve plugin info: ${response.status}" }
 
         val jsonElement = Json.parseToJsonElement(response.body<String>())
-        jsonElement.jsonObject.let { json ->
-            projectInfo.apply {
-                name = json["slug"]?.jsonPrimitive?.content
-                    ?: throw IllegalStateException("Plugin slug not found")
-                gameVersions.addAll(json["game_versions"]?.jsonArray?.map { it.jsonPrimitive.content }
-                    ?: emptyList())
-                loaders.addAll(json["loaders"]?.jsonArray?.map { it.jsonPrimitive.content }
-                    ?: emptyList())
-            }
+        return jsonElement.jsonObject.let { json ->
+            ProjectInfo(
+                name = json["slug"]?.jsonPrimitive?.content ?: throw IllegalStateException("Plugin slug not found"),
+                gameVersions = json["game_versions"]?.jsonArray?.map { it.jsonPrimitive.content }
+                    ?: emptyList(),
+                loaders = json["loaders"]?.jsonArray?.map { it.jsonPrimitive.content }
+                    ?: emptyList()
+            )
         }
     }
 
-    private suspend fun validateInputs(client: HttpClient, modId: String, loader: String, gameVersion: String) {
+    private suspend fun validateInputs(client: HttpClient, modId: String, loader: String, gameVersion: String, projectInfo: ProjectInfo) {
         require(isModIdAvailable(client, modId)) { "Error verifying mod ID $modId" }
-        require(isLoaderValid(loader)) { "Invalid loader $loader. Available loaders: ${projectInfo.loaders.joinToString()}" }
-        require(isGameVersionValid(gameVersion)) { "Invalid game version $gameVersion. Available versions: ${projectInfo.gameVersions.joinToString()}" }
+        require(isLoaderValid(loader, projectInfo)) { "Invalid loader $loader. Available loaders: ${projectInfo.loaders.joinToString()}" }
+        require(isGameVersionValid(gameVersion, projectInfo)) { "Invalid game version $gameVersion. Available versions: ${projectInfo.gameVersions.joinToString()}" }
     }
 
     private suspend fun isModIdAvailable(client: HttpClient, modId: String): Boolean {
@@ -123,13 +118,13 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
         return response.status == HttpStatusCode.OK
     }
 
-    private fun isLoaderValid(loader: String): Boolean =
+    private fun isLoaderValid(loader: String, projectInfo: ProjectInfo): Boolean =
         projectInfo.loaders.contains(loader)
 
-    private fun isGameVersionValid(gameVersion: String): Boolean =
+    private fun isGameVersionValid(gameVersion: String, projectInfo: ProjectInfo): Boolean =
         projectInfo.gameVersions.contains(gameVersion)
 
-    private suspend fun retrievePluginDownloadUrl(client: HttpClient, modId: String, loader: String, gameVersion: String): String {
+    private suspend fun retrievePluginDownloadUrl(client: HttpClient, modId: String, loader: String, gameVersion: String, projectInfo: ProjectInfo): String {
         val url = "$BASE_API_URL/project/$modId/version?loaders=[%22$loader%22]&game_versions=[%22$gameVersion%22]"
         val response = client.get(url)
         require(response.status == HttpStatusCode.OK) { "Failed to retrieve version info: ${response.status}" }
@@ -186,9 +181,6 @@ object ModrinthDownloadAction : YamlAction<ModrinthDownloadActionData> {
         }
     }
 
-    private fun cleanup() {
-        projectInfo = ProjectInfo()
-    }
 
     private suspend fun createDirectoriesIfNeeded(vararg paths: Path) = withContext(Dispatchers.IO) {
         paths.forEach { path ->

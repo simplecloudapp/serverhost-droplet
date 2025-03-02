@@ -1,7 +1,7 @@
 package app.simplecloud.droplet.serverhost.shared.actions
 
 // This class is able to execute actions parsed by the YamlActionLoader
-open class YamlActionGroupExecutor(private val context: YamlActionContext, private val loadedActions: Map<String, List<Pair<YamlActionTypes, Any>>>) {
+open class YamlActionGroupExecutor(protected val context: YamlActionContext, protected val loadedActions: Map<String, List<Pair<YamlActionTypes, Any>>>) {
     open fun execute(ref: String): List<Exception> {
         val loadedActionGroup = loadedActions[ref] ?: return listOf(NullPointerException("$ref does not exist"))
         val exceptions = mutableListOf<Exception>()
@@ -21,8 +21,9 @@ open class YamlActionGroupExecutor(private val context: YamlActionContext, priva
         return exceptions
     }
 
-    protected fun exec(data: Any, ctx: YamlActionContext, action: YamlAction<*>) {
-        action.javaClass.getMethod("exec", YamlActionContext::class.java, Any::class.java).invoke(action, ctx, data)
+    protected open fun exec(data: Any, ctx: YamlActionContext, action: YamlAction<*>) {
+        val actualData = if (data is YamlActionData) data.data else data
+        action.javaClass.getMethod("exec", YamlActionContext::class.java, Any::class.java).invoke(action, ctx, actualData)
     }
 }
 

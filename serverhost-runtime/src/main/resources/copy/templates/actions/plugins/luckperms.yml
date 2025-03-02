@@ -11,6 +11,7 @@ download-luckperms:
     path: "%server-dir%/plugins"
     replace: false
     type: "modrinth_download"
+    async: true
 
 setup-plugin:
   - ref: luckperms/init-dirs

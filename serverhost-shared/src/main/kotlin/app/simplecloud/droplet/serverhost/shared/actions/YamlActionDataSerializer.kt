@@ -22,13 +22,17 @@ class YamlActionDataSerializer : TypeSerializer<YamlActionData> {
             actionType.action.getDataType(),
             "Action of type $actionType was not correctly configured"
         )
-        return YamlActionData(actionType, actionData)
+        val async = node.node("async").getBoolean(false)
+        return YamlActionData(actionType, actionData, async)
     }
 
     override fun serialize(type: Type?, obj: YamlActionData?, node: ConfigurationNode) {
         if (obj == null) return
         node.set(obj.data)
         node.node("type").set(String::class.java, obj.type.name.lowercase())
+        if (obj.async) {
+            node.node("async").set(Boolean::class.java, true)
+        }
     }
 
 }
