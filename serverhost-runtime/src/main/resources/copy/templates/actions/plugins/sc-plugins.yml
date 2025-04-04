@@ -1,3 +1,12 @@
+download-api:
+  - mod-id: "JCJKZvY2"
+    game-version: "%version%"
+    loader: "%software%"
+    path: "%server-dir%/plugins"
+    replace: false
+    type: "modrinth_download"
+    async: true
+
 download-cloud-command:
   - mod-id: "qZsNJQis"
     game-version: "%version%"

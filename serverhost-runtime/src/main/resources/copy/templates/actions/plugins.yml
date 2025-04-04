@@ -1,6 +1,7 @@
 download-all:
   - ref: plugins/download-proxy
   - ref: plugins/download-server
+  - ref: sc-plugins/download-api
 
 download-proxy:
   - ref: sc-plugins/download-cloud-command

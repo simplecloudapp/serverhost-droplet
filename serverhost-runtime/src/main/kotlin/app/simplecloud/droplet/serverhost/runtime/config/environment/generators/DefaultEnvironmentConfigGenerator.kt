@@ -8,9 +8,8 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 
 object DefaultEnvironmentConfigGenerator : EnvironmentConfigGenerator {
-    override fun generate(args: ServerHostStartCommand): EnvironmentConfig {
+    override fun generate(): EnvironmentConfig {
         val javaHome = Paths.get(System.getProperty("java.home"), "/bin/java").absolutePathString()
-        val libs = args.libsPath.absolutePathString()
         return EnvironmentConfig(
             name = getName(),
             start = EnvironmentStartConfig(
@@ -19,9 +18,8 @@ object DefaultEnvironmentConfigGenerator : EnvironmentConfigGenerator {
                     "-Xms%MIN_MEMORY%M",
                     "-Xmx%MAX_MEMORY%M",
                     "-Dcom.mojang.eula.agree=true",
-                    "-cp",
-                    "${libs}/*:%SERVER_FILE%",
-                    "%MAIN_CLASS%",
+                    "-jar",
+                    "%SERVER_FILE%",
                     "nogui"
                 )
             )

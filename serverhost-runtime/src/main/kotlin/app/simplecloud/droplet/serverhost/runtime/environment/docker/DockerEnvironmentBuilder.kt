@@ -9,7 +9,6 @@ import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartComman
 import app.simplecloud.droplet.serverhost.runtime.environment.EnvironmentBuilder
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
-import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 
 class DockerEnvironmentBuilder(
     private val config: EnvironmentConfig,
@@ -21,11 +20,6 @@ class DockerEnvironmentBuilder(
         val placeholders = mutableMapOf(
             "%MIN_MEMORY%" to server.minMemory.toString(),
             "%MAX_MEMORY%" to server.maxMemory.toString(),
-            "%MAIN_CLASS%" to JarMainClass.find(
-                ServerVersionLoader.getAndDownloadServerJar(
-                    server.properties["server-url"] ?: ""
-                ).toPath()
-            )
         )
         placeholders.putAll(server.properties.map {
             "%${it.key.uppercase().replace("-", "_")}%" to it.value

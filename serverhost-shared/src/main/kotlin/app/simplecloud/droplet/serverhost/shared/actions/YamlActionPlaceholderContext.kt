@@ -28,10 +28,6 @@ data class YamlActionPlaceholderContext(val placeholders: MutableMap<String, Str
         set("templates", path)
     }
 
-    fun setLibs(path: Path) {
-        set("libs-dir", path)
-    }
-
     fun setGroup(group: String) {
         set("group", group)
     }
