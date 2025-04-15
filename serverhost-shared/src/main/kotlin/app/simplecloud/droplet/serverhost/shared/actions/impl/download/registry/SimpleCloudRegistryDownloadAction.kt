@@ -15,6 +15,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.apache.logging.log4j.LogManager
 import java.nio.file.Files
 import java.nio.file.Path
@@ -62,11 +65,15 @@ object SimpleCloudRegistryDownloadAction : YamlAction<SimpleCloudRegistryDownloa
 
             withContext(Dispatchers.IO) {
                 httpClient().use { client ->
+                    // Get the latest version
+                    val version = getLatestVersion(client, appSlug)
+                    logger.info("Latest version: $version")
+
                     // Get the download URL
                     val downloadUrl = getDownloadUrl(client, appSlug, platform, arch, platformVersion)
                     logger.info("Download URL: $downloadUrl")
 
-                    val fileName = "${appSlug}-${platform}-${arch}.jar"
+                    val fileName = "${appSlug}-${version}-${arch}.jar"
                     val destinationPath = Paths.get(placeholders.parse(data.path))
 
                     handleFileDownload(
@@ -85,6 +92,22 @@ object SimpleCloudRegistryDownloadAction : YamlAction<SimpleCloudRegistryDownloa
             logger.error("Failed to download from registry", e)
             throw e
         }
+    }
+
+    private suspend fun getLatestVersion(
+        client: HttpClient,
+        appSlug: String
+    ): String {
+        val url = "$BASE_API_URL/applications/$appSlug/releases"
+        val response = client.get(url)
+        require(response.status == HttpStatusCode.OK) {
+            "Failed to get releases for ${url}: ${response.status}"
+        }
+        
+        val jsonResponse = response.body<String>()
+        val releases = json.parseToJsonElement(jsonResponse).jsonArray
+        return releases.first().jsonObject["version"]?.jsonPrimitive?.content
+            ?: throw IllegalStateException("No version found")
     }
 
     private suspend fun getDownloadUrl(
