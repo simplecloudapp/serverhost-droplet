@@ -1,10 +1,11 @@
-download-api:
-  - mod-id: "JCJKZvY2"
-    game-version: "%version%"
-    loader: "%software%"
+download-cloud-api:
+  - app-slug: "cloud-api-plugin"
+    platform: "minecraft_plugin"
+    arch: "%software%"
+    platform-version: "%version%"
     path: "%server-dir%/plugins"
-    replace: false
-    type: "modrinth_download"
+    update: false
+    type: "registry_download"
     async: true
 
 download-cloud-command:
