@@ -2,12 +2,6 @@ cache-pull:
   - from: "%templates%/cache/%group%"
     to: "%server-dir%"
     type: "copy"
-  - ref: cache-pull-libs
-
-cache-pull-libs:
-  - from: "%libs-dir%"
-    to: "%server-dir%/libraries"
-    type: "copy"
 
 cache-push:
   - ref: cache-push-paper

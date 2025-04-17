@@ -12,7 +12,6 @@ import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironment
 import app.simplecloud.droplet.serverhost.runtime.host.ServerVersionLoader
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
-import app.simplecloud.droplet.serverhost.runtime.util.JarMainClass
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionPlaceholderContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
@@ -377,7 +376,6 @@ class ProcessServerEnvironment(
         val placeholders = envBuilder.createRuntimePlaceholders(server).toMutableMap()
         placeholders.putAll(
             mapOf(
-                "%MAIN_CLASS%" to JarMainClass.find(serverJar),
                 "%SERVER_FILE%" to serverJar.absolutePathString(),
                 "%LOG_FILE%" to logFile.absolutePathString(),
             )

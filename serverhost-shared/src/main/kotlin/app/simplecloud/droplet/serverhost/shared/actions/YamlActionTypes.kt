@@ -11,6 +11,7 @@ import app.simplecloud.droplet.serverhost.shared.actions.impl.delete.DeleteActio
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.DownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.GithubDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.download.modrinth.ModrinthDownloadAction
+import app.simplecloud.droplet.serverhost.shared.actions.impl.download.registry.SimpleCloudRegistryDownloadAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.env.EnvAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.execute.ExecuteAction
 import app.simplecloud.droplet.serverhost.shared.actions.impl.infer.InferFromServerAction
@@ -26,6 +27,7 @@ enum class YamlActionTypes(val action: YamlAction<*>) {
     DOWNLOAD(DownloadAction),
     GITHUB_DOWNLOAD(GithubDownloadAction),
     MODRINTH_DOWNLOAD(ModrinthDownloadAction),
+    REGISTRY_DOWNLOAD(SimpleCloudRegistryDownloadAction),
     COMPRESS(CompressAction),
     DECOMPRESS(DecompressAction),
     CONDITIONAL(ConditionalAction),

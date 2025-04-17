@@ -1,3 +1,13 @@
+download-cloud-api:
+  - app-slug: "cloud-api-plugin"
+    platform: "minecraft_plugin"
+    arch: "%software%"
+    platform-version: "%version%"
+    path: "%server-dir%/plugins"
+    update: false
+    type: "registry_download"
+    async: true
+
 download-cloud-command:
   - mod-id: "qZsNJQis"
     game-version: "%version%"

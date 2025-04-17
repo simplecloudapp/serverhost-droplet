@@ -3,10 +3,13 @@ package app.simplecloud.droplet.serverhost.runtime.environment.docker
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.api.time.ProtobufTimestamp
-import app.simplecloud.droplet.serverhost.runtime.config.environment.*
+import app.simplecloud.droplet.serverhost.runtime.config.environment.DockerHealthConfig
+import app.simplecloud.droplet.serverhost.runtime.config.environment.DockerStartConfig
+import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfig
+import app.simplecloud.droplet.serverhost.runtime.config.environment.EnvironmentConfigRepository
 import app.simplecloud.droplet.serverhost.runtime.config.environment.generators.DefaultDockerConfigGenerator
-import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.environment.*
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
 import app.simplecloud.droplet.serverhost.shared.docker.DockerClientInstance
@@ -70,7 +73,7 @@ class DockerServerEnvironment(
 
     @OptIn(ExperimentalPathApi::class)
     override fun build(server: Server, context: BuildContext) {
-        val env = getEnvironment(server) ?: DefaultDockerConfigGenerator.generate(args)
+        val env = getEnvironment(server) ?: DefaultDockerConfigGenerator.generate()
         if (context == BuildContext.STARTUP != env.buildPolicy.firstBuild) return
         if (context == BuildContext.TRIGGER != env.buildPolicy.trigger) return
         if (!server.properties.containsKey("docker-image")) {

@@ -10,9 +10,8 @@ import java.nio.file.Paths
 import kotlin.io.path.absolutePathString
 
 object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
-    override fun generate(args: ServerHostStartCommand): EnvironmentConfig {
+    override fun generate(): EnvironmentConfig {
         val javaHome = Paths.get(System.getProperty("java.home"), "/bin/java").absolutePathString()
-        val libs = args.libsPath.absolutePathString()
         val command = mutableListOf<String>()
         command.add("screen")
         val capabilities = ScreenCapabilities.getScreenCapabilities()
@@ -31,9 +30,8 @@ object ScreenEnvironmentConfigGenerator : EnvironmentConfigGenerator {
                 "-Xms%MIN_MEMORY%M",
                 "-Xmx%MAX_MEMORY%M",
                 "-Dcom.mojang.eula.agree=true",
-                "-cp",
-                "${libs}/*:%SERVER_FILE%",
-                "%MAIN_CLASS%",
+                "-jar",
+                "%SERVER_FILE%",
                 "nogui"
             )
         )

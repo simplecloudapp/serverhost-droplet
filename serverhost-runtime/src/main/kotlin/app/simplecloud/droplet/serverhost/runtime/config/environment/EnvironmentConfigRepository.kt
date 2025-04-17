@@ -1,8 +1,8 @@
 package app.simplecloud.droplet.serverhost.runtime.config.environment
 
 import app.simplecloud.droplet.serverhost.runtime.config.YamlDirectoryRepository
-import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntime
+import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import org.apache.logging.log4j.LogManager
 
 class EnvironmentConfigRepository(args: ServerHostStartCommand) :
@@ -11,7 +11,7 @@ class EnvironmentConfigRepository(args: ServerHostStartCommand) :
 
     init {
         try {
-            EnvironmentConfigGenerator.generateAll(args, this)
+            EnvironmentConfigGenerator.generateAll(this)
             load()
         } catch (e: Exception) {
             logger.error(e)

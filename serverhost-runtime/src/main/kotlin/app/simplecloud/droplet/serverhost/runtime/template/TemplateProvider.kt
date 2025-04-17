@@ -52,7 +52,6 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         val executor = YamlTemplateExecutor(actionProvider.getLoadedActions())
         val ctx = YamlActionContext()
         val placeholders = YamlActionPlaceholderContext()
-        placeholders.setLibs(args.libsPath)
         placeholders.setTemplate(args.templatePath)
         placeholders.setRunning(args.runningServersPath)
         placeholders.set("forwarding-secret", args.forwardingSecret)
@@ -68,7 +67,6 @@ class TemplateProvider(private val args: ServerHostStartCommand, private val act
         )
         ctx.store("configurator-jar", Paths.get("cache", "jars", "configurator.jar"))
         ctx.store("last-checksum", server.properties["last-checksum"] ?: "")
-        ctx.store("libs", args.libsPath)
         executor.execute(template, on, ctx).forEach { exception ->
             logger.warn(exception.message ?: "Unknown error on template of group ${server.group}")
         }

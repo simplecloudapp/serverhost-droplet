@@ -32,19 +32,8 @@ class FileSystemSnapshotCache(private val directory: Path) {
                 for (event in key.pollEvents()) {
                     val path = event.context() as? Path ?: continue
                     val resolvedPath = directory.resolve(path)
-                    val kind = event.kind()
                     logger.info("Detected change in $resolvedPath")
-                    when (kind) {
-                        StandardWatchEventKinds.ENTRY_CREATE,
-                        StandardWatchEventKinds.ENTRY_MODIFY
-                            -> {
-                            nextSnapshot = UUID.randomUUID().toString()
-                        }
-
-                        StandardWatchEventKinds.ENTRY_DELETE -> {
-                            nextSnapshot = UUID.randomUUID().toString()
-                        }
-                    }
+                    nextSnapshot = UUID.randomUUID().toString()
                 }
                 key.reset()
             }
