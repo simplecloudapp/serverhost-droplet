@@ -22,10 +22,18 @@ object ServerVersionLoader {
             return File(CACHE_PATH_STRING, path)
         }
 
-        val file = File(
-            CACHE_PATH_STRING,
-            "${FilenameUtils.getBaseName(path).uppercase()}.jar"
-        )
+        val baseName = FilenameUtils.getBaseName(path)
+        val query = serverUri.query.orEmpty()
+        val suffix = query
+            .takeIf { it.isNotEmpty() }
+            ?.replace("=", "-")
+            ?.replace("&", "_")
+            ?.let { "_$it" }
+            .orEmpty()
+
+        val fileName = "${(baseName + suffix).uppercase()}.jar"
+
+        val file = File(CACHE_PATH_STRING, fileName)
 
         if (!file.exists()) {
             download(serverUriString, file)
