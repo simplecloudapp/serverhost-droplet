@@ -6,7 +6,6 @@ import app.simplecloud.droplet.serverhost.runtime.config.environment.Environment
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionContext
 import app.simplecloud.droplet.serverhost.shared.actions.YamlActionTriggerTypes
-import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import app.simplecloud.droplet.serverhost.shared.hack.ServerPinger
 import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.flow.Flow
@@ -119,7 +118,6 @@ abstract class ServerEnvironment(
     }
 
     protected suspend fun updateServer(server: Server, ping: ServerPinger.StatusResponse, controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub): Server {
-        PortProcessHandle.removePreBind(server.port.toInt())
         val controllerServer = controllerStub.getServerById(getServerByIdRequest {
             this.serverId = server.uniqueId
         })

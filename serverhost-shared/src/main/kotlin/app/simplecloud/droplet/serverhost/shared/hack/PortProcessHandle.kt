@@ -61,6 +61,7 @@ object PortProcessHandle {
             while (isPortBound(port)) {
                 port++
             }
+
             addPreBind(port, time, server.properties.getOrDefault("max-startup-seconds", "120").toLong())
             return port
         }
@@ -72,15 +73,6 @@ object PortProcessHandle {
 
     fun isPortBound(port: Int): Boolean {
         return !of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
-    }
-
-    fun removePreBind(port: Int, forced: Boolean = false) {
-        // Check if max-startup-seconds is reached and return if not
-        if (!forced && LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MAX))) {
-            return
-        }
-
-        preBindPorts.remove(port)
     }
 
 }

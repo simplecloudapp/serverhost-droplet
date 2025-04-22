@@ -290,12 +290,10 @@ class DockerServerEnvironment(
             val state = client.inspectContainerCmd(containerId).exec().state
             if (state.running != true || (state.health.failingStreak > 0 && !PortProcessHandle.isPortBound(server.port.toInt()))) {
                 logger.error("Could not reattach ${server.group}-${server.numericalId}. Is the container down or the port not bound?")
-                PortProcessHandle.removePreBind(server.port.toInt())
                 return false
             }
         } catch (e: Exception) {
             logger.error("Could not reattach ${server.group}-${server.numericalId}. Container not found.")
-            PortProcessHandle.removePreBind(server.port.toInt())
             return false
         }
         logger.info("Server ${server.group}-${server.numericalId} successfully reattached!")

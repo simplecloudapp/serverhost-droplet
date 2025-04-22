@@ -227,7 +227,6 @@ class ProcessServerEnvironment(
         }
 
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
-        PortProcessHandle.removePreBind(server.port.toInt(), true)
         return true
     }
 
@@ -307,7 +306,6 @@ class ProcessServerEnvironment(
         if (handle == null) {
             logger.error("Server ${server.uniqueId} of group ${server.group} not found running on port ${server.port}. Is it down?")
             executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP, templateProvider)
-            PortProcessHandle.removePreBind(server.port.toInt(), true)
             return false
         }
 
