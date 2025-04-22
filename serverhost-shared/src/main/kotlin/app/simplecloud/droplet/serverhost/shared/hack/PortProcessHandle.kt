@@ -2,6 +2,8 @@ package app.simplecloud.droplet.serverhost.shared.hack
 
 import app.simplecloud.controller.shared.server.Server
 import build.buf.gen.simplecloud.controller.v1.ServerDefinition
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -13,6 +15,8 @@ object PortProcessHandle {
     private val windowsPattern = Pattern.compile("\\s*TCP\\s+\\S+:(\\d+)\\s+\\S+:(\\d+)\\s+\\S+\\s+(\\d+)")
 
     private val preBindPorts = ConcurrentHashMap<Int, LocalDateTime>()
+
+    private val portMutex = Mutex()
 
     fun of(port: Int): Optional<ProcessHandle> {
         val os = OS.get() ?: return Optional.empty()
@@ -49,16 +53,17 @@ object PortProcessHandle {
         }
     }
 
-    @Synchronized
-    fun findNextFreePort(startPort: Int, serverDefinition: ServerDefinition): Int {
-        val server = Server.fromDefinition(serverDefinition)
-        var port = startPort
-        val time = LocalDateTime.now()
-        while (isPortBound(port)) {
-            port++
+    suspend fun findNextFreePort(startPort: Int, serverDefinition: ServerDefinition): Int {
+        portMutex.withLock {
+            val server = Server.fromDefinition(serverDefinition)
+            var port = startPort
+            val time = LocalDateTime.now()
+            while (isPortBound(port)) {
+                port++
+            }
+            addPreBind(port, time, server.properties.getOrDefault("max-startup-seconds", "120").toLong())
+            return port
         }
-        addPreBind(port, time, server.properties.getOrDefault("max-startup-seconds", "120").toLong())
-        return port
     }
 
     private fun addPreBind(port: Int, time: LocalDateTime, duration: Long) {
