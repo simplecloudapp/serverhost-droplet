@@ -19,24 +19,48 @@ class FileSystemSnapshotCache(private val directory: Path) {
     private var nextSnapshot: String? = UUID.randomUUID().toString()
 
     fun registerWatcher(): Job {
-        directory.register(
-            watchService,
-            StandardWatchEventKinds.ENTRY_CREATE,
-            StandardWatchEventKinds.ENTRY_DELETE,
-            StandardWatchEventKinds.ENTRY_MODIFY
-        )
+        registerDirectoryAndSubdirectories(directory)
 
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 val key = watchService.take()
                 for (event in key.pollEvents()) {
                     val path = event.context() as? Path ?: continue
-                    val resolvedPath = directory.resolve(path)
+                    val watchedDir = key.watchable() as? Path ?: continue
+                    val resolvedPath = watchedDir.resolve(path)
                     logger.info("Detected change in $resolvedPath")
+
+                    // If a new directory is created, register it and its subdirectories
+                    if (resolvedPath.isDirectory() && event.kind() == StandardWatchEventKinds.ENTRY_CREATE) {
+                        registerDirectoryAndSubdirectories(resolvedPath)
+                    }
+
                     nextSnapshot = UUID.randomUUID().toString()
                 }
                 key.reset()
             }
+        }
+    }
+
+    private fun registerDirectoryAndSubdirectories(dir: Path) {
+        if (!dir.isDirectory()) return
+
+        try {
+            logger.info("Registering directory for watching: $dir")
+            dir.register(
+                watchService,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_DELETE,
+                StandardWatchEventKinds.ENTRY_MODIFY
+            )
+
+            dir.listDirectoryEntries().forEach { entry ->
+                if (entry.isDirectory()) {
+                    registerDirectoryAndSubdirectories(entry)
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to register directory for watching: $dir", e)
         }
     }
 
