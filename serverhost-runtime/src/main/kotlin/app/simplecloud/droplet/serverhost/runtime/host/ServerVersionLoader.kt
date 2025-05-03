@@ -3,7 +3,6 @@ package app.simplecloud.droplet.serverhost.runtime.host
 import org.apache.commons.io.FilenameUtils
 import java.io.File
 import java.net.URI
-import java.net.URL
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -18,7 +17,6 @@ object ServerVersionLoader {
             if (path.startsWith("/")) {
                 return File(path)
             }
-
             return File(CACHE_PATH_STRING, path)
         }
 
@@ -32,18 +30,16 @@ object ServerVersionLoader {
             .orEmpty()
 
         val fileName = "${(baseName + suffix).uppercase()}.jar"
-
         val file = File(CACHE_PATH_STRING, fileName)
 
-        if (!file.exists()) {
+        return if (!file.exists()) {
             download(serverUriString, file)
+        } else {
+            file
         }
-
-        return file
     }
 
-
-    private fun download(url: String, file: File) {
+    private fun download(url: String, file: File): File {
         file.parentFile?.mkdirs()
         val urlConnection = URI(url).toURL().openConnection()
         urlConnection.setRequestProperty(
@@ -51,8 +47,26 @@ object ServerVersionLoader {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0"
         )
         urlConnection.connect()
-        Files.copy(urlConnection.getInputStream(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
 
+        val contentDisposition = urlConnection.getHeaderField("Content-Disposition")
+        val actualFile = if (contentDisposition != null) {
+            val filename = contentDisposition
+                .split(";")
+                .find { it.trim().startsWith("filename=") }
+                ?.substringAfter("filename=")
+                ?.trim('"')
+
+            if (filename != null) {
+                File(file.parentFile, filename)
+            } else {
+                file
+            }
+        } else {
+            file
+        }
+
+        Files.copy(urlConnection.getInputStream(), actualFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        return actualFile
     }
 
 }
