@@ -226,7 +226,6 @@ class ProcessServerEnvironment(
             executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.STOP, templateProvider)
         }
 
-        invalidateServer(server)
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully stopped.")
         return true
     }

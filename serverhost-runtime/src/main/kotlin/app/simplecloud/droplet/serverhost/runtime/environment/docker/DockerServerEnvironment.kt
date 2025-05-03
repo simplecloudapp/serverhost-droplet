@@ -159,7 +159,6 @@ class DockerServerEnvironment(
         try {
             client.stopContainerCmd(containerId).exec()
             serverToContainer.keys.find { server.uniqueId == it.uniqueId }?.let { serverToContainer.remove(it) }
-            invalidateServer(server)
             logger.info("Stopped server ${server.group}-${server.numericalId} (Container: ${containerId})")
             return true
         } catch (e: Exception) {
