@@ -46,7 +46,7 @@ class FileSystemSnapshotCache(private val directory: Path) {
         if (!dir.isDirectory()) return
 
         try {
-            logger.info("Registering directory for watching: $dir")
+            logger.debug("Registering directory for watching: $dir")
             dir.register(
                 watchService,
                 StandardWatchEventKinds.ENTRY_CREATE,

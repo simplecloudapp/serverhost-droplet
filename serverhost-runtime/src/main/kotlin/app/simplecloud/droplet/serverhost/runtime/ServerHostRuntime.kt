@@ -9,6 +9,7 @@ import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartComman
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.environment.MetricsTracker
 import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironments
+import app.simplecloud.droplet.serverhost.runtime.host.ServerOperationReconciler
 import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
@@ -67,6 +68,11 @@ class ServerHostRuntime(
         environmentsRepository,
         GroupRuntimeDirectory()
     )
+    private val operationReconciler = ServerOperationReconciler(
+        serverHost,
+        environments,
+        serverHostStartCommand.maxConcurrentOperations
+    )
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()
 
@@ -80,6 +86,7 @@ class ServerHostRuntime(
         attach()
         environments.buildAll()
         environments.startServerStateChecker()
+        operationReconciler.start()
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
                 server.shutdown()
@@ -123,7 +130,15 @@ class ServerHostRuntime(
             serverHostStartCommand.grpcHost,
             serverHostStartCommand.authorizationPort
         )
-            .addService(ServerHostService(serverHost, environments, templateSnapshotCache, serverHostStartCommand))
+            .addService(
+                ServerHostService(
+                    serverHost,
+                    environments,
+                    templateSnapshotCache,
+                    serverHostStartCommand,
+                    operationReconciler
+                )
+            )
             .build()
     }
 
