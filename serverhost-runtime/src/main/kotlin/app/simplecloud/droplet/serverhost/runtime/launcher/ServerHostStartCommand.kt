@@ -100,6 +100,10 @@ class ServerHostStartCommand(
     val forwardingSecret: String by option(help = "Forwarding secret", envvar = "FORWARDING_SECRET_KEY")
         .defaultLazy { AuthFileSecretFactory.loadOrCreate(forwardingSecretPath) }
 
+    val maxConcurrentOperations: Int by option(help = "Maximum concurrent operations", envvar = "MAX_CONCURRENT_OPERATIONS")
+        .int()
+        .default(2)
+
     val trackMetrics: Boolean by option(help = "Track metrics", envvar = "TRACK_METRICS")
         .boolean()
         .default(true)
