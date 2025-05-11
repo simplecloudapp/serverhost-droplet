@@ -9,8 +9,10 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.concurrent.ConcurrentHashMap
 
 object ServerPinger {
+
     private val gson: Gson = GsonBuilder()
         .registerTypeAdapter(Description::class.java, Description.Deserializer())
         .create()
@@ -19,6 +21,13 @@ object ServerPinger {
     private const val MAGIC = "00ffff00fefefefefdfdfdfd12345678"
     private const val UNCONNECTED_PING: Byte = 0x01
     private const val UNCONNECTED_PONG: Byte = 0x1C
+
+    private const val CONNECT_TIMEOUT = 5000
+    private const val READ_TIMEOUT = 5000
+
+    private const val CACHE_REVALIDATION_TIME = 10 * 60 * 1000L // 10 minutes
+
+    private val serverMethodCache = ConcurrentHashMap<String, CachedMethod>()
 
     enum class ServerType {
         JAVA, BEDROCK
@@ -67,37 +76,79 @@ object ServerPinger {
         }
     }
 
+    private data class CachedMethod(
+        val methodIndex: Int,
+        val timestamp: Long
+    )
+
+    private val pingMethods = listOf(
+        Method("Standard Java", { address -> pingJava(address) }, ServerType.JAVA),
+        Method("Java with PROXY Protocol", { address -> pingJavaWithProxyProtocol(address) }, ServerType.JAVA),
+        Method("Standard Bedrock", { address -> pingBedrock(address) }, ServerType.BEDROCK),
+        Method("Bedrock with PROXY Protocol", { address -> pingBedrockWithProxyProtocol(address) }, ServerType.BEDROCK)
+    )
+
+    private data class Method(
+        val name: String,
+        val pingFunction: suspend (InetSocketAddress) -> StatusResponse?,
+        val serverType: ServerType
+    )
+
     suspend fun ping(address: InetSocketAddress): StatusResponse {
         return coroutineScope {
-            // Try Java first
-            try {
-                val javaResponse = pingJava(address)
-                if (javaResponse != null) {
-                    return@coroutineScope javaResponse.copy(serverType = ServerType.JAVA)
+            val serverKey = "${address.hostString}:${address.port}"
+            val cachedMethod = serverMethodCache[serverKey]
+            val currentTime = System.currentTimeMillis()
+
+            // Check if we have a cached method that's still valid
+            if (cachedMethod != null && currentTime - cachedMethod.timestamp < CACHE_REVALIDATION_TIME) {
+                // Try the cached method first
+                try {
+                    val method = pingMethods[cachedMethod.methodIndex]
+                    val response = method.pingFunction(address)
+                    if (response != null) {
+                        // Update the timestamp
+                        serverMethodCache[serverKey] = CachedMethod(cachedMethod.methodIndex, currentTime)
+                        return@coroutineScope response.copy(serverType = method.serverType)
+                    }
+                } catch (e: Exception) {
+                    // Cached method failed, continue to try all methods
                 }
-            } catch (_: Exception) {
-                // Ignore and try Bedrock
             }
 
-            // Try Bedrock if Java failed
-            try {
-                val bedrockResponse = pingBedrock(address)
-                if (bedrockResponse != null) {
-                    return@coroutineScope bedrockResponse
+            // If cached method failed or needs revalidation, try all methods
+            var lastException: Exception? = null
+
+            // Try each method in sequence
+            pingMethods.forEachIndexed { index, method ->
+                // Skip if this was the cached method we already tried
+                if (cachedMethod != null && index == cachedMethod.methodIndex &&
+                    currentTime - cachedMethod.timestamp < CACHE_REVALIDATION_TIME) {
+                    return@forEachIndexed
                 }
-            } catch (_: Exception) {
-                // Ignore
+
+                try {
+                    val response = method.pingFunction(address)
+                    if (response != null) {
+                        // Cache the successful method
+                        serverMethodCache[serverKey] = CachedMethod(index, currentTime)
+                        return@coroutineScope response.copy(serverType = method.serverType)
+                    }
+                } catch (e: Exception) {
+                    lastException = e
+                    // Continue to the next method
+                }
             }
 
-            throw IOException("Failed to ping server (both Java and Bedrock attempts failed)")
+            throw IOException("Failed to ping server $serverKey (all methods failed)", lastException)
         }
     }
 
     private suspend fun pingJava(address: InetSocketAddress): StatusResponse? {
-        return withTimeoutOrNull(3000) {
+        return withTimeoutOrNull(CONNECT_TIMEOUT.toLong()) {
             Socket().use { socket ->
-                socket.setSoTimeout(3000)
-                socket.connect(address, 3000)
+                socket.setSoTimeout(READ_TIMEOUT)
+                socket.connect(address, CONNECT_TIMEOUT)
 
                 socket.getOutputStream().use { outputStream ->
                     DataOutputStream(outputStream).use { dataOutputStream ->
@@ -129,10 +180,50 @@ object ServerPinger {
         }
     }
 
+    private suspend fun pingJavaWithProxyProtocol(address: InetSocketAddress): StatusResponse? {
+        return withTimeoutOrNull(CONNECT_TIMEOUT.toLong()) {
+            Socket().use { socket ->
+                socket.setSoTimeout(READ_TIMEOUT)
+                socket.connect(address, CONNECT_TIMEOUT)
+
+                socket.getOutputStream().use { outputStream ->
+                    DataOutputStream(outputStream).use { dataOutputStream ->
+                        // Send PROXY protocol header first
+                        val proxyHeader = "PROXY TCP4 127.0.0.1 ${address.hostString} 12345 ${address.port}\r\n"
+                        dataOutputStream.write(proxyHeader.toByteArray())
+
+                        socket.getInputStream().use { inputStream ->
+                            DataInputStream(inputStream).use { dataInputStream ->
+                                val handshake = ByteArrayOutputStream()
+                                DataOutputStream(handshake).use { hs ->
+                                    hs.writeByte(0x00)
+                                    writeVarInt(hs, 4)
+                                    writeVarInt(hs, address.hostString.length)
+                                    hs.writeBytes(address.hostString)
+                                    hs.writeShort(address.port)
+                                    writeVarInt(hs, 1)
+
+                                    writeVarInt(dataOutputStream, handshake.size())
+                                    dataOutputStream.write(handshake.toByteArray())
+                                }
+
+                                dataOutputStream.writeByte(0x01)
+                                dataOutputStream.writeByte(0x00)
+
+                                val json = fetchJson(dataInputStream)
+                                return@withTimeoutOrNull parseJsonResponse(json)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun pingBedrock(address: InetSocketAddress): StatusResponse? {
-        return withTimeoutOrNull(3000) {
+        return withTimeoutOrNull(CONNECT_TIMEOUT.toLong()) {
             DatagramSocket().use { socket ->
-                socket.soTimeout = 3000
+                socket.soTimeout = READ_TIMEOUT
 
                 val pingPacket = createBedrockPingPacket()
                 socket.send(DatagramPacket(pingPacket, pingPacket.size, address))
@@ -142,6 +233,44 @@ object ServerPinger {
                 socket.receive(response)
 
                 return@withTimeoutOrNull parseBedrockResponse(response.data.copyOfRange(0, response.length))
+            }
+        }
+    }
+
+    private suspend fun pingBedrockWithProxyProtocol(address: InetSocketAddress): StatusResponse? {
+        return withTimeoutOrNull(CONNECT_TIMEOUT.toLong()) {
+            Socket().use { socket ->
+                socket.setSoTimeout(READ_TIMEOUT)
+                socket.connect(address, CONNECT_TIMEOUT)
+
+                socket.getOutputStream().use { outputStream ->
+                    DataOutputStream(outputStream).use { dataOutputStream ->
+                        // Send PROXY protocol header first
+                        val proxyHeader = "PROXY UDP4 127.0.0.1 ${address.hostString} 12345 ${address.port}\r\n"
+                        dataOutputStream.write(proxyHeader.toByteArray())
+
+                        // Send Bedrock ping packet
+                        val pingPacket = createBedrockPingPacket()
+                        dataOutputStream.write(pingPacket)
+                        dataOutputStream.flush()
+
+                        // Read response
+                        socket.getInputStream().use { inputStream ->
+                            DataInputStream(inputStream).use { dataInputStream ->
+                                // Read response data
+                                val responseSize = Math.min(1024, dataInputStream.available())
+                                if (responseSize <= 0) {
+                                    throw IOException("No data received from Bedrock server")
+                                }
+
+                                val responseData = ByteArray(responseSize)
+                                dataInputStream.readFully(responseData)
+
+                                return@withTimeoutOrNull parseBedrockResponse(responseData)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
