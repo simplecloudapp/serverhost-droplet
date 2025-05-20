@@ -9,6 +9,7 @@ import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartComman
 import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirectory
 import app.simplecloud.droplet.serverhost.runtime.environment.MetricsTracker
 import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironments
+import app.simplecloud.droplet.serverhost.runtime.files.FileSystemEvent
 import app.simplecloud.droplet.serverhost.runtime.host.ServerOperationReconciler
 import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
@@ -45,7 +46,10 @@ class ServerHostRuntime(
         serverHostStartCommand,
         actionProvider
     )
+
     private val templateSnapshotCache = FileSystemSnapshotCache(serverHostStartCommand.templatePath)
+    private val templateDefinitionSnapshotCache = FileSystemSnapshotCache(serverHostStartCommand.templateDefinitionPath)
+
     private val environmentsRepository = EnvironmentConfigRepository(serverHostStartCommand)
     private val controllerChannel =
         ServerHostGrpc.createControllerChannel(serverHostStartCommand.grpcHost, serverHostStartCommand.grpcPort)
@@ -114,6 +118,17 @@ class ServerHostRuntime(
     private fun startFileSystemWatcher() {
         logger.info("Starting template file system watcher...")
         templateSnapshotCache.registerWatcher()
+        templateDefinitionSnapshotCache.registerWatcher()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            templateDefinitionSnapshotCache.events.collect { event ->
+                if (event !is FileSystemEvent.SystemChanged) return@collect
+
+                logger.info("Template definition file system changed, reloading...")
+                actionProvider.load()
+                templateProvider.load()
+            }
+        }
     }
 
     private suspend fun attach() {
