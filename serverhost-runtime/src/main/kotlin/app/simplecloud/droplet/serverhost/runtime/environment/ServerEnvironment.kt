@@ -84,7 +84,12 @@ abstract class ServerEnvironment(
         return mutableMapOf<Server, String>()
     }
 
-    open fun executeTemplate(dir: Path, server: Server, on: YamlActionTriggerTypes, provider: TemplateProvider): YamlActionContext? {
+    open fun executeTemplate(
+        dir: Path,
+        server: Server,
+        on: YamlActionTriggerTypes,
+        provider: TemplateProvider
+    ): YamlActionContext? {
         val template = provider.getLoadedTemplate(server.properties["template-id"] ?: "")
         if (template != null) {
             return provider.execute(server, dir, template, on)
@@ -117,7 +122,11 @@ abstract class ServerEnvironment(
         return environmentRepository.get(runtimeRepository.get(server.group))
     }
 
-    protected suspend fun updateServer(server: Server, ping: ServerPinger.StatusResponse, controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub): Server {
+    protected suspend fun updateServer(
+        server: Server,
+        ping: ServerPinger.StatusResponse,
+        controllerStub: ControllerServerServiceGrpcKt.ControllerServerServiceCoroutineStub
+    ): Server {
         val controllerServer = controllerStub.getServerById(getServerByIdRequest {
             this.serverId = server.uniqueId
         })
@@ -131,9 +140,24 @@ abstract class ServerEnvironment(
                 else
                     server.state
             this.maxPlayers = ping.players.max.toLong()
-            this.playerCount = ping.players.online.toLong()
+            this.playerCount = getPlayerCount(this, ping)
             this.cloudProperties["motd"] = ping.description.text
         })
         return copiedServer
     }
+
+    private fun getPlayerCount(serverDefinition: ServerDefinitionKt.Dsl, ping: ServerPinger.StatusResponse): Long {
+        if (serverDefinition.cloudProperties.containsKey("player-count-ping") && serverDefinition.cloudProperties["player-count-ping"] == "skip") {
+            if (serverDefinition.playerCount != ping.players.online.toLong()) {
+                logger.warn("Player count mismatch for ${serverDefinition.uniqueId}: ${serverDefinition.playerCount} != ${ping.players.online}")
+            } else {
+                logger.info("Player count skipped for ${serverDefinition.uniqueId}")
+            }
+
+            return serverDefinition.playerCount
+        }
+
+        return ping.players.online.toLong()
+    }
+
 }
