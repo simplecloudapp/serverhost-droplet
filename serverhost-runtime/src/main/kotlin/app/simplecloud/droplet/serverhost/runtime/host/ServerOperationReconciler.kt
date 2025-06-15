@@ -14,7 +14,7 @@ import io.grpc.StatusException
 import kotlinx.coroutines.*
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.PriorityBlockingQueue
 import kotlin.time.Duration.Companion.minutes
 
 class ServerOperationReconciler(
@@ -25,17 +25,28 @@ class ServerOperationReconciler(
 
     private val logger = LogManager.getLogger(ServerOperationReconciler::class.java)
 
-    sealed class Operation {
+    sealed class Operation : Comparable<Operation> {
+        abstract val priority: Int
+
         data class Start(
             val server: ServerDefinition,
             val group: Group,
-            val deferred: CompletableDeferred<ServerDefinition>
+            val deferred: CompletableDeferred<ServerDefinition>,
+            override val priority: Int = getServerPriority(server)
         ) : Operation()
 
-        // Maybe we will add an update operation later
+        override fun compareTo(other: Operation): Int {
+            return other.priority.compareTo(this.priority)
+        }
+
+        companion object {
+            private fun getServerPriority(server: ServerDefinition): Int {
+                return server.cloudPropertiesMap["start-priority"]?.toIntOrNull() ?: 0
+            }
+        }
     }
 
-    private val pendingOperations = ConcurrentLinkedQueue<Operation>()
+    private val pendingOperations = PriorityBlockingQueue<Operation>()
     private val startingServers = ConcurrentHashMap<String, Job>()
 
     fun start() {
@@ -46,24 +57,32 @@ class ServerOperationReconciler(
     }
 
     suspend fun submitStart(server: ServerDefinition, group: Group): ServerDefinition {
-        logger.info("Submitting start operation for server: {}", server.uniqueId)
+        val priority = server.cloudPropertiesMap["start-priority"]?.toIntOrNull() ?: 0
+        logger.info("Submitting start operation for server: {} with priority: {}", server.uniqueId, priority)
         val deferred = CompletableDeferred<ServerDefinition>()
-        pendingOperations.offer(Operation.Start(server, group, deferred))
+        pendingOperations.offer(Operation.Start(server, group, deferred, priority))
         return deferred.await()
     }
+
     private suspend fun reconcile() = coroutineScope {
         while (isActive) {
             cleanupCompletedServers()
 
             if (startingServers.size >= maxConcurrentOperations) {
+                delay(100)
                 continue
             }
 
-            val operation = pendingOperations.poll()?: continue
+            val operation = pendingOperations.poll()
+            if (operation == null) {
+                delay(100)
+                continue
+            }
 
             when (operation) {
                 is Operation.Start -> {
-                    logger.info("Processing start operation for server: {}", operation.server.uniqueId)
+                    logger.info("Processing start operation for server: {} with priority: {}",
+                        operation.server.uniqueId, operation.priority)
                     val startJob = launch {
                         try {
                             val startedServer = startServer(operation)
@@ -77,6 +96,7 @@ class ServerOperationReconciler(
                     startingServers[operation.server.uniqueId] = startJob
                 }
             }
+
             delay(100)
         }
     }
@@ -132,5 +152,4 @@ class ServerOperationReconciler(
         logger.info("Successfully started server: {}", server.uniqueId)
         return server
     }
-
 }
