@@ -120,7 +120,7 @@ class ServerOperationReconciler(
         } ?: logger.warn("Timeout waiting for server to come online: {}", server.uniqueId)
     }
 
-    private fun isServerOnline(env: ServerEnvironment, server: ServerDefinition): Boolean {
+    private suspend fun isServerOnline(env: ServerEnvironment, server: ServerDefinition): Boolean {
         return try {
             val currentServer = env.getServer(server.uniqueId) ?: return false
             currentServer.state == ServerState.AVAILABLE || currentServer.state == ServerState.INGAME
@@ -152,4 +152,5 @@ class ServerOperationReconciler(
         logger.info("Successfully started server: {}", server.uniqueId)
         return server
     }
+    
 }

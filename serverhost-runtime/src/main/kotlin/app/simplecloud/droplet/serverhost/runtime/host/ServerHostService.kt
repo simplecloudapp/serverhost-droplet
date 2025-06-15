@@ -12,6 +12,7 @@ import io.grpc.Status
 import io.grpc.StatusException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import java.io.FileInputStream
 import java.io.FileWriter
@@ -71,13 +72,18 @@ class ServerHostService(
     }
 
     override fun streamServerLogs(request: ServerHostStreamServerLogsRequest): Flow<ServerHostStreamServerLogsResponse> {
-        val env = envs.of(request.serverId)
-            ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
+        return flow {
+            val env = envs.of(request.serverId)
+                ?: throw StatusException(Status.NOT_FOUND.withDescription("Server not found"))
 
-        try {
-            return env.streamLogs(env.getServer(request.serverId)!!)
-        } catch (e: Exception) {
-            throw StatusException(Status.INTERNAL.withDescription("Could not stream logs: ${e.message}"))
+            try {
+                env.streamLogs(env.getServer(request.serverId)!!)
+                    .collect { response ->
+                        emit(response)
+                    }
+            } catch (e: Exception) {
+                throw StatusException(Status.INTERNAL.withDescription("Could not stream logs: ${e.message}"))
+            }
         }
     }
 

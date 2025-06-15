@@ -55,14 +55,14 @@ class ServerEnvironments(
     /**
      * Gets the environment a server is running on or null if the server is not running in any environment
      */
-    fun of(server: Server): ServerEnvironment? {
+    suspend fun of(server: Server): ServerEnvironment? {
         return of(server.uniqueId)
     }
 
     /**
      * Gets the environment a server is running on or null if the server is not running in any environment
      */
-    fun of(uniqueId: String): ServerEnvironment? {
+    suspend fun of(uniqueId: String): ServerEnvironment? {
         return envs.firstOrNull {
             val server = it.getServer(uniqueId) ?: return@firstOrNull false
             val env = it.getEnvironment(server) ?: return@firstOrNull false
@@ -106,7 +106,7 @@ class ServerEnvironments(
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 envs.forEach { env ->
-                    env.getServers().toList().forEach {
+                    env.getServers().forEach {
                         var delete = false
                         var server = it
                         try {
@@ -116,7 +116,7 @@ class ServerEnvironments(
                                 env.stopServer(server)
                             } else {
                                 server = updated
-                                env.updateServerCache(updated.uniqueId, updated)
+//                                env.updateServerCache(updated.uniqueId, updated)
                             }
                             controllerStub.updateServer(
                                 UpdateServerRequest.newBuilder()
@@ -153,4 +153,5 @@ class ServerEnvironments(
                 ).build()
         )
     }
+
 }

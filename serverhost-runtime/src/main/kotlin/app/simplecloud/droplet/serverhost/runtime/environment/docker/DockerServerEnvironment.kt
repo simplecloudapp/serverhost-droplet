@@ -51,10 +51,6 @@ class DockerServerEnvironment(
         return serverToContainer.any { it.key.uniqueId == server.uniqueId }
     }
 
-    override fun getServerCache(): MutableMap<Server, *> {
-        return serverToContainer
-    }
-
     /**
      * The reason this method exists is so no errors are thrown if docker is not installed until the environment is used
      */
@@ -212,7 +208,7 @@ class DockerServerEnvironment(
         return server.properties["docker-container-id"]!!
     }
 
-    override fun getServer(uniqueId: String): Server? {
+    override suspend fun getServer(uniqueId: String): Server? {
         return serverToContainer.keys.find { it.uniqueId == uniqueId }
     }
 
@@ -335,7 +331,8 @@ class DockerServerEnvironment(
         return server.properties.containsKey("docker-image") && server.properties.containsKey("docker-tag")
     }
 
-    override fun getServers(): List<Server> {
+    override suspend fun getServers(): List<Server> {
         return serverToContainer.keys.toList()
     }
+
 }
