@@ -106,27 +106,29 @@ class ServerEnvironments(
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 envs.forEach { env ->
-                    env.getServers().forEach {
-                        var delete = false
-                        var server = it
-                        try {
-                            val updated = env.updateServer(it)
-                            if (updated == null) {
-                                delete = true
-                                env.stopServer(server)
-                            } else {
-                                server = updated
+                    env.getServers()
+                        .filter { it.port > 0 && it.state != ServerState.PREPARING}
+                        .forEach {
+                            var delete = false
+                            var server = it
+                            try {
+                                val updated = env.updateServer(it)
+                                if (updated == null) {
+                                    delete = true
+                                    env.stopServer(server)
+                                } else {
+                                    server = updated
 //                                env.updateServerCache(updated.uniqueId, updated)
+                                }
+                                controllerStub.updateServer(
+                                    UpdateServerRequest.newBuilder()
+                                        .setServer(server.toDefinition())
+                                        .setDeleted(delete).build()
+                                )
+                            } catch (e: Exception) {
+                                logger.error("An error occurred whilst updating the server:", e)
                             }
-                            controllerStub.updateServer(
-                                UpdateServerRequest.newBuilder()
-                                    .setServer(server.toDefinition())
-                                    .setDeleted(delete).build()
-                            )
-                        } catch (e: Exception) {
-                            logger.error("An error occurred whilst updating the server:", e)
                         }
-                    }
                 }
                 delay(5000L)
             }

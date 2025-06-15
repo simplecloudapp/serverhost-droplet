@@ -130,8 +130,6 @@ abstract class ServerEnvironment(
         if (serverDefinition.cloudProperties.containsKey("player-count-ping") && serverDefinition.cloudProperties["player-count-ping"] == "skip") {
             if (serverDefinition.playerCount != ping.players.online.toLong()) {
                 logger.warn("Player count mismatch for ${serverDefinition.uniqueId}: ${serverDefinition.playerCount} != ${ping.players.online}")
-            } else {
-                logger.info("Player count skipped for ${serverDefinition.uniqueId}")
             }
 
             return serverDefinition.playerCount
