@@ -10,6 +10,7 @@ import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.boolean
 import com.github.ajalt.clikt.parameters.types.int
+import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
 import com.github.ajalt.clikt.sources.PropertiesValueSource
 import com.github.ajalt.clikt.sources.ValueSource
@@ -35,7 +36,9 @@ class ServerHostStartCommand(
         }
     )
     val hostPort: Int by option(help = "ServerHost port (default: 5820)", envvar = "HOST_PORT").int().default(5820)
-    
+
+    val maximumServerHostMemory: Long by option(help = "Maximum ServerHost memory (default: unlimited)", envvar = "MAXIMUM_SERVER_HOST_MEMORY").long().default(0L)
+
     val templatePath: Path by option(help = "Path to the template files (templates)", envvar = "TEMPLATES_PATH")
         .path()
         .default(Path.of("templates"))

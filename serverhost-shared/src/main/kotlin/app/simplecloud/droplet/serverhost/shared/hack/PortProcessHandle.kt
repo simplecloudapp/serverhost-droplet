@@ -1,9 +1,10 @@
 package app.simplecloud.droplet.serverhost.shared.hack
 
-import app.simplecloud.controller.shared.server.Server
 import build.buf.gen.simplecloud.controller.v1.ServerDefinition
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -55,14 +56,13 @@ object PortProcessHandle {
 
     suspend fun findNextFreePort(startPort: Int, serverDefinition: ServerDefinition): Int {
         portMutex.withLock {
-            val server = Server.fromDefinition(serverDefinition)
             var port = startPort
             val time = LocalDateTime.now()
-            while (isPortBound(port)) {
+            while (isPortBound(port, serverDefinition.serverIp)) {
                 port++
             }
 
-            addPreBind(port, time, server.properties.getOrDefault("max-startup-seconds", "120").toLong())
+            addPreBind(port, time, serverDefinition.cloudPropertiesMap.getOrDefault("max-startup-seconds", "120").toLong())
             return port
         }
     }
@@ -71,8 +71,19 @@ object PortProcessHandle {
         preBindPorts[port] = time.plusSeconds(duration)
     }
 
-    fun isPortBound(port: Int): Boolean {
-        return !of(port).isEmpty || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
+    fun isPortBound(port: Int, host: String): Boolean {
+        return isTcpPortUsed(port, host) || LocalDateTime.now().isBefore(preBindPorts.getOrDefault(port, LocalDateTime.MIN))
+    }
+
+    private fun isTcpPortUsed(port: Int, host: String, timeoutMs: Int = 1000): Boolean {
+        return try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), timeoutMs)
+                true
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
 }

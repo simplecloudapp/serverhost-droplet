@@ -1,11 +1,11 @@
 package app.simplecloud.droplet.serverhost.runtime.host
 
-import app.simplecloud.controller.shared.group.Group
 import app.simplecloud.controller.shared.host.ServerHost
 import app.simplecloud.controller.shared.server.Server
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemSnapshotCache
 import app.simplecloud.droplet.serverhost.runtime.launcher.ServerHostStartCommand
 import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironments
+import app.simplecloud.droplet.serverhost.shared.hack.PortProcessHandle
 import build.buf.gen.simplecloud.controller.v1.*
 import com.google.protobuf.ByteString
 import io.grpc.Status
@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import org.apache.logging.log4j.LogManager
 import java.io.FileInputStream
 import java.io.FileWriter
 import java.nio.file.Files
@@ -25,14 +26,32 @@ class ServerHostService(
     private val envs: ServerEnvironments,
     private val cache: FileSystemSnapshotCache,
     private val args: ServerHostStartCommand,
-    private val operationReconciler: ServerOperationReconciler,
 ) : ServerHostServiceGrpcKt.ServerHostServiceCoroutineImplBase() {
 
+    private val logger = LogManager.getLogger(ServerHostService::class.java)
+
     override suspend fun startServer(request: ServerHostStartServerRequest): ServerDefinition {
-        return operationReconciler.submitStart(
-            server = request.server,
-            group = Group.fromDefinition(request.group)
-        )
+        val port = PortProcessHandle.findNextFreePort(request.group.startPort.toInt(), request.server)
+        logger.info("Allocated port {} for server: {}", port, request.server.uniqueId)
+
+        val server = request.server.copy {
+            serverState = ServerState.STARTING
+            serverPort = port.toLong()
+            hostId = serverHost.id
+            serverIp = serverHost.host
+        }
+
+        val env = envs.firstFor(Server.fromDefinition(server))
+        logger.info("Starting server {} using environment", server.uniqueId)
+        val started = env.startServer(Server.fromDefinition(server))
+
+        if (!started) {
+            logger.info("Failed to start server: {} - Group not supported", server.uniqueId)
+            throw StatusException(Status.INVALID_ARGUMENT.withDescription("Group not supported by this ServerHost."))
+        }
+
+        logger.info("Successfully started server: {}", server.uniqueId)
+        return server
     }
 
     override suspend fun stopServer(request: ServerDefinition): ServerDefinition {

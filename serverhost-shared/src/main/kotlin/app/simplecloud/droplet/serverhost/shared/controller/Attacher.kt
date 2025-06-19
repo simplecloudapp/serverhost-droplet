@@ -27,7 +27,10 @@ class Attacher(
                         host = serverHost.host,
                         id = serverHost.id,
                         port = serverHost.port,
-                        envoyPort = 8081
+                        envoyPort = 8081,
+                        properties = mutableMapOf(
+                            "maximum-memory" to serverHost.maximumMemory.toString()
+                        )
                     ).toDefinition()
                 ).build()
             )

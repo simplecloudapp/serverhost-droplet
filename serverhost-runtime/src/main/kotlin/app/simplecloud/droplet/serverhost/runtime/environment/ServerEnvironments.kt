@@ -112,6 +112,7 @@ class ServerEnvironments(
                             var delete = false
                             var server = it
                             try {
+                                logger.info("Checking server ${server.group}-${server.numericalId}")
                                 val updated = env.updateServer(it)
                                 if (updated == null) {
                                     delete = true

@@ -10,7 +10,6 @@ import app.simplecloud.droplet.serverhost.runtime.environment.GroupRuntimeDirect
 import app.simplecloud.droplet.serverhost.runtime.environment.MetricsTracker
 import app.simplecloud.droplet.serverhost.runtime.environment.ServerEnvironments
 import app.simplecloud.droplet.serverhost.runtime.files.FileSystemEvent
-import app.simplecloud.droplet.serverhost.runtime.host.ServerOperationReconciler
 import app.simplecloud.droplet.serverhost.runtime.template.ActionProvider
 import app.simplecloud.droplet.serverhost.runtime.template.TemplateProvider
 import app.simplecloud.droplet.serverhost.shared.controller.Attacher
@@ -36,12 +35,15 @@ class ServerHostRuntime(
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
     private val authCallCredentials = AuthCallCredentials(serverHostStartCommand.authSecret)
 
-    private val serverHost =
-        ServerHost(serverHostStartCommand.hostId, serverHostStartCommand.hostIp, serverHostStartCommand.hostPort)
-    private val actionProvider =
-        ActionProvider(
-            Path.of(serverHostStartCommand.templateDefinitionPath.absolutePathString(), "actions")
-        )
+    private val serverHost = ServerHost(
+        serverHostStartCommand.hostId,
+        serverHostStartCommand.hostIp,
+        serverHostStartCommand.hostPort,
+        serverHostStartCommand.maximumServerHostMemory
+    )
+    private val actionProvider = ActionProvider(
+        Path.of(serverHostStartCommand.templateDefinitionPath.absolutePathString(), "actions")
+    )
     private val templateProvider = TemplateProvider(
         serverHostStartCommand,
         actionProvider
@@ -72,11 +74,6 @@ class ServerHostRuntime(
         environmentsRepository,
         GroupRuntimeDirectory()
     )
-    private val operationReconciler = ServerOperationReconciler(
-        serverHost,
-        environments,
-        serverHostStartCommand.maxConcurrentOperations
-    )
     private val server = createGrpcServer()
     private val resourceCopier = ResourceCopier()
 
@@ -90,7 +87,6 @@ class ServerHostRuntime(
         attach()
         environments.buildAll()
         environments.startServerStateChecker()
-        operationReconciler.start()
         suspendCancellableCoroutine<Unit> { continuation ->
             Runtime.getRuntime().addShutdownHook(Thread {
                 server.shutdown()
@@ -151,7 +147,6 @@ class ServerHostRuntime(
                     environments,
                     templateSnapshotCache,
                     serverHostStartCommand,
-                    operationReconciler
                 )
             )
             .build()

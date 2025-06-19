@@ -177,7 +177,7 @@ class DockerServerEnvironment(
         try {
             if (result.state.running != true) return null
             if (!healthy) {
-                if (!PortProcessHandle.isPortBound(server.port.toInt())) return null
+                if (!PortProcessHandle.isPortBound(server.port.toInt(), server.ip)) return null
                 return server
             }
             val address = InetSocketAddress(server.ip, server.port.toInt())
@@ -284,7 +284,7 @@ class DockerServerEnvironment(
         }
         try {
             val state = client.inspectContainerCmd(containerId).exec().state
-            if (state.running != true || (state.health.failingStreak > 0 && !PortProcessHandle.isPortBound(server.port.toInt()))) {
+            if (state.running != true || (state.health.failingStreak > 0 && !PortProcessHandle.isPortBound(server.port.toInt(), server.ip))) {
                 logger.error("Could not reattach ${server.group}-${server.numericalId}. Is the container down or the port not bound?")
                 return false
             }

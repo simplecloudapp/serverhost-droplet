@@ -105,7 +105,7 @@ class ProcessServerEnvironment(
             return copiedServer
         } catch (e: Exception) {
             logger.warn("Failed to ping server ${server.group}-${server.numericalId} ${server.ip}:${server.port}: ${e.message}")
-            val portBound = PortProcessHandle.isPortBound(server.port.toInt())
+            val portBound = PortProcessHandle.isPortBound(server.port.toInt(), server.ip)
             if (!portBound) {
                 return null
             }
