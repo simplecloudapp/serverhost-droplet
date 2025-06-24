@@ -63,10 +63,10 @@ class ServerEnvironments(
      * Gets the environment a server is running on or null if the server is not running in any environment
      */
     suspend fun of(uniqueId: String): ServerEnvironment? {
-        return envs.firstOrNull {
-            val server = it.getServer(uniqueId) ?: return@firstOrNull false
-            val env = it.getEnvironment(server) ?: return@firstOrNull false
-            return@firstOrNull it.appliesFor(env) || it.appliesFor(server)
+        return envs.firstOrNull { serverEnvironment ->
+            val server = serverEnvironment.getServer(uniqueId) ?: return@firstOrNull false
+            val env = serverEnvironment.getEnvironment(server) ?: return@firstOrNull false
+            return@firstOrNull serverEnvironment.appliesFor(env) || serverEnvironment.appliesFor(server)
         }
     }
 
@@ -96,9 +96,9 @@ class ServerEnvironments(
      * Returns the initial environment used for the server
      */
     fun firstFor(server: Server): ServerEnvironment {
-        return envs.firstOrNull {
-            val env = it.getEnvironment(server) ?: return@firstOrNull it.appliesFor(server)
-            return@firstOrNull it.appliesFor(env)
+        return envs.firstOrNull { serverEnvironment ->
+            val env = serverEnvironment.getEnvironment(server) ?: return@firstOrNull serverEnvironment.appliesFor(server)
+            return@firstOrNull serverEnvironment.appliesFor(env)
         } ?: process
     }
 

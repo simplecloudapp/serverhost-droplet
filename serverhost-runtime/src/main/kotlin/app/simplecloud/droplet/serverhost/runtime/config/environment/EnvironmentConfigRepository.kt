@@ -23,6 +23,7 @@ class EnvironmentConfigRepository(args: ServerHostStartCommand) :
     }
 
     fun get(runtime: GroupRuntime?): EnvironmentConfig? {
-        return runtime?.environment?.let { get(it) }
+        val environment = runtime?.environment?: return null
+        return get(environment)
     }
 }
