@@ -39,10 +39,10 @@ import org.apache.commons.io.FileUtils
 import org.apache.logging.log4j.LogManager
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.io.path.absolutePathString
-import kotlin.io.path.exists
+import kotlin.io.path.*
 
 class ProcessServerEnvironment(
     private val templateProvider: TemplateProvider,
@@ -62,6 +62,9 @@ class ProcessServerEnvironment(
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
 
     private val serverToProcessHandle = mutableMapOf<Server, ProcessHandle>()
+
+    private val pluginFlexiblePattern =
+        Regex("""^(.+)-(\d+\.\d+\.\d+)-(\d+\.\d+\.\d+)-dev\.([a-f0-9]+)(?:[-.](\d+))?(?:[-.]([a-f0-9]+))?\.jar$""")
 
     private fun containsServer(server: Server): Boolean {
         return serverToProcessHandle.any { it.key.uniqueId == server.uniqueId }
@@ -150,6 +153,16 @@ class ProcessServerEnvironment(
         return File(basicUrl)
     }
 
+    private fun getStaticServerDir(server: Server, runtimeConfig: GroupRuntime?): File {
+        var basicUrl = runtimeConfig?.parentDir ?: "static/${server.group}/${server.group}-${server.numericalId}"
+
+        if (!basicUrl.startsWith("/")) {
+            basicUrl = "${args.runningServersPath}/$basicUrl"
+        }
+
+        return File(basicUrl)
+    }
+
     private fun getServerLogFile(server: Server): Path {
         return Paths.get(
             args.logsPath.absolutePathString(),
@@ -174,6 +187,10 @@ class ProcessServerEnvironment(
             logger.error("Server ${server.uniqueId} of group ${server.group} failed to start: Group has no assigned configurator.")
             return false
         }
+
+
+        cleanUpOldPlugins(getStaticServerDir(server, runtimeConfig).toPath())
+
         var ctx: YamlActionContext?
         copyTemplateMutex.withLock {
             ctx = executeTemplate(getServerDir(server).toPath(), server, YamlActionTriggerTypes.START, templateProvider)
@@ -208,13 +225,27 @@ class ProcessServerEnvironment(
             logger.error("Can not build process", e)
             return false
         }
-
     }
 
     private fun getServerDir(ctx: YamlActionContext): File? {
         val dir = ctx.retrieve<String>("server-dir") ?: return null
         val placeholders = YamlActionPlaceholderContext.retrieve(ctx) ?: return null
         return Paths.get(placeholders.parse(dir)).toFile()
+    }
+
+    private fun cleanUpOldPlugins(serverDir: Path) {
+        val pluginsDir = serverDir.resolve("plugins")
+        logger.info("Cleaning up old plugins in $pluginsDir")
+        if (!pluginsDir.exists()) {
+            return
+        }
+
+        pluginsDir.listDirectoryEntries()
+            .filter { it.isRegularFile() && pluginFlexiblePattern.matchEntire(it.name) != null }
+            .forEach {
+                logger.info("Deleting old plugin file: ${it.name}")
+                Files.deleteIfExists(it)
+            }
     }
 
     override suspend fun stopServer(server: Server): Boolean {
