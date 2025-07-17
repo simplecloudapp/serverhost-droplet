@@ -55,14 +55,14 @@ class ServerEnvironments(
     /**
      * Gets the environment a server is running on or null if the server is not running in any environment
      */
-    fun of(server: Server): ServerEnvironment? {
+    suspend fun of(server: Server): ServerEnvironment? {
         return of(server.uniqueId)
     }
 
     /**
      * Gets the environment a server is running on or null if the server is not running in any environment
      */
-    fun of(uniqueId: String): ServerEnvironment? {
+    suspend fun of(uniqueId: String): ServerEnvironment? {
         return envs.firstOrNull {
             val server = it.getServer(uniqueId) ?: return@firstOrNull false
             val env = it.getEnvironment(server) ?: return@firstOrNull false
@@ -106,27 +106,29 @@ class ServerEnvironments(
         return CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
                 envs.forEach { env ->
-                    env.getServers().toList().forEach {
-                        var delete = false
-                        var server = it
-                        try {
-                            val updated = env.updateServer(it)
-                            if (updated == null) {
-                                delete = true
-                                env.stopServer(server)
-                            } else {
-                                server = updated
-                                env.updateServerCache(updated.uniqueId, updated)
+                    env.getServers()
+                        .filter { it.port > 0 && it.state != ServerState.PREPARING}
+                        .forEach {
+                            var delete = false
+                            var server = it
+                            try {
+                                val updated = env.updateServer(it)
+                                if (updated == null) {
+                                    delete = true
+                                    env.stopServer(server)
+                                } else {
+                                    server = updated
+//                                env.updateServerCache(updated.uniqueId, updated)
+                                }
+                                controllerStub.updateServer(
+                                    UpdateServerRequest.newBuilder()
+                                        .setServer(server.toDefinition())
+                                        .setDeleted(delete).build()
+                                )
+                            } catch (e: Exception) {
+                                logger.error("An error occurred whilst updating the server:", e)
                             }
-                            controllerStub.updateServer(
-                                UpdateServerRequest.newBuilder()
-                                    .setServer(server.toDefinition())
-                                    .setDeleted(delete).build()
-                            )
-                        } catch (e: Exception) {
-                            logger.error("An error occurred whilst updating the server:", e)
                         }
-                    }
                 }
                 delay(5000L)
             }
@@ -153,4 +155,5 @@ class ServerEnvironments(
                 ).build()
         )
     }
+
 }

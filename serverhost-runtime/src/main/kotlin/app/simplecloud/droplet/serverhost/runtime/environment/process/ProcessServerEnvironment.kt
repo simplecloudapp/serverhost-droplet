@@ -22,10 +22,7 @@ import app.simplecloud.droplet.serverhost.shared.logs.DefaultLogStreamer
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenCommandExecutor
 import app.simplecloud.droplet.serverhost.shared.logs.ScreenConfigurer
 import app.simplecloud.droplet.serverhost.shared.process.ProcessFinder
-import build.buf.gen.simplecloud.controller.v1.ControllerServerServiceGrpcKt
-import build.buf.gen.simplecloud.controller.v1.ServerHostStreamServerLogsResponse
-import build.buf.gen.simplecloud.controller.v1.copy
-import build.buf.gen.simplecloud.controller.v1.updateServerRequest
+import build.buf.gen.simplecloud.controller.v1.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -61,25 +58,27 @@ class ProcessServerEnvironment(
 
     private val logger = LogManager.getLogger(ServerHostRuntime::class.java)
 
-    private val serverToProcessHandle = mutableMapOf<Server, ProcessHandle>()
+    private val serverToProcessHandle = mutableMapOf<String, ProcessHandle>()
 
     private val pluginFlexiblePattern =
         Regex("""^(.+)-(\d+\.\d+\.\d+)-(\d+\.\d+\.\d+)-dev\.([a-f0-9]+)(?:[-.](\d+))?(?:[-.]([a-f0-9]+))?\.jar$""")
 
     private fun containsServer(server: Server): Boolean {
-        return serverToProcessHandle.any { it.key.uniqueId == server.uniqueId }
+        return serverToProcessHandle.any { it.key == server.uniqueId }
     }
 
     private fun containsServer(uniqueId: String): Boolean {
-        return serverToProcessHandle.any { it.key.uniqueId == uniqueId }
+        return serverToProcessHandle.any { it.key == uniqueId }
     }
 
-    override fun getServer(uniqueId: String): Server? {
-        return serverToProcessHandle.keys.find { it.uniqueId == uniqueId }
-    }
-
-    override fun getServerCache(): MutableMap<Server, *> {
-        return serverToProcessHandle
+    override suspend fun getServer(uniqueId: String): Server? {
+        try {
+            return Server.fromDefinition(controllerStub.getServerById(getServerByIdRequest {
+                this.serverId = uniqueId
+            }))
+        } catch (e: Exception) {
+            return null
+        }
     }
 
     override suspend fun updateServer(server: Server): Server? {
@@ -93,11 +92,11 @@ class ProcessServerEnvironment(
                     exe
                 ).orElse(null)
             }
-            if (realProcess != null && serverToProcessHandle[server] != realProcess) {
+            if (realProcess != null && serverToProcessHandle[server.uniqueId] != realProcess) {
                 logger.info("Found updated process handle with PID ${realProcess.pid()} for ${server.group}-${server.numericalId}")
-                serverToProcessHandle[server] = realProcess
+                serverToProcessHandle[server.uniqueId] = realProcess
             }
-            return@let serverToProcessHandle[server]
+            return@let serverToProcessHandle[server.uniqueId]
         }
 
         val address = InetSocketAddress(server.ip, server.port.toInt())
@@ -218,7 +217,7 @@ class ProcessServerEnvironment(
                     this.deleted = false
                 })
             }
-            serverToProcessHandle[updatedServer] = process.toHandle()
+            serverToProcessHandle[updatedServer.uniqueId] = process.toHandle()
             logger.info("Server ${server.uniqueId} of group ${server.group} now running on PID ${process.pid()}")
             return true
         } catch (e: Exception) {
@@ -268,7 +267,7 @@ class ProcessServerEnvironment(
             return false
         }
 
-        val process = serverToProcessHandle[server]
+        val process = serverToProcessHandle[server.uniqueId]
         if (process == null) {
             logger.error("Could not find server process of server ${server.group}-${server.numericalId}")
             return false
@@ -300,7 +299,7 @@ class ProcessServerEnvironment(
         stopTries[uniqueId] = stopTries.getOrDefault(uniqueId, 0) + 1
         return try {
             process.onExit().await()
-            serverToProcessHandle.remove(server)
+            serverToProcessHandle.remove(server.uniqueId)
             stopTries.remove(uniqueId)
             true
         } catch (e: Exception) {
@@ -311,7 +310,7 @@ class ProcessServerEnvironment(
 
     private fun getProcess(uniqueId: String): ProcessHandle? {
         return serverToProcessHandle.getOrDefault(
-            serverToProcessHandle.keys.firstOrNull { it.uniqueId == uniqueId },
+            serverToProcessHandle.keys.firstOrNull { it == uniqueId },
             null
         )
     }
@@ -340,7 +339,7 @@ class ProcessServerEnvironment(
             return false
         }
 
-        serverToProcessHandle[server] = handle
+        serverToProcessHandle[server.uniqueId] = handle
         logger.info("Server ${server.uniqueId} of group ${server.group} successfully reattached on PID ${handle.pid()}")
         return true
     }
@@ -422,8 +421,8 @@ class ProcessServerEnvironment(
         return builder
     }
 
-    override fun getServers(): List<Server> {
-        return serverToProcessHandle.keys.toList()
+    override suspend fun getServers(): List<Server> {
+        return controllerStub.getAllServers(getAllServersRequest { }).serversList.map { Server.fromDefinition(it) }
     }
 
 }

@@ -46,7 +46,7 @@ abstract class ServerEnvironment(
     /**
      * Get a [Server] by unique id (returns null if the server is not running on this environment)
      */
-    abstract fun getServer(uniqueId: String): Server?
+    abstract suspend fun getServer(uniqueId: String): Server?
 
     /**
      * Reattaches a [Server] and returns true if the server is successfully reattached
@@ -78,11 +78,7 @@ abstract class ServerEnvironment(
     /**
      * Returns all servers currently known to this environment.
      */
-    abstract fun getServers(): List<Server>
-
-    open fun getServerCache(): MutableMap<Server, *> {
-        return mutableMapOf<Server, String>()
-    }
+    abstract suspend fun getServers(): List<Server>
 
     open fun executeTemplate(
         dir: Path,
@@ -100,22 +96,6 @@ abstract class ServerEnvironment(
                 logger.error("Template ${server.properties["template-id"] ?: ""} of group ${server.group} was not found!")
         }
         return null
-    }
-
-    /**
-     * Updates the cached server for this environment.
-     */
-    open fun updateServerCache(uniqueId: String, server: Server) {
-        @Suppress("UNCHECKED_CAST")
-        val cache = getServerCache() as MutableMap<Server, Any>
-        val key = cache.keys.find { it.uniqueId == uniqueId }
-        if (key == null) {
-            logger.warn("Server ${server.group}-${server.numericalId} could not be updated in cache")
-            return
-        }
-        val value = cache[key]!!
-        cache.remove(key)
-        cache[server] = value
     }
 
     fun getEnvironment(server: Server): EnvironmentConfig? {
@@ -150,8 +130,6 @@ abstract class ServerEnvironment(
         if (serverDefinition.cloudProperties.containsKey("player-count-ping") && serverDefinition.cloudProperties["player-count-ping"] == "skip") {
             if (serverDefinition.playerCount != ping.players.online.toLong()) {
                 logger.warn("Player count mismatch for ${serverDefinition.uniqueId}: ${serverDefinition.playerCount} != ${ping.players.online}")
-            } else {
-                logger.info("Player count skipped for ${serverDefinition.uniqueId}")
             }
 
             return serverDefinition.playerCount
