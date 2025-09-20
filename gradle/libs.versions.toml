@@ -42,6 +42,7 @@ simplecloud-metrics = { module = "app.simplecloud:internal-metrics-api", version
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 
 configurate-yaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurate" }
+configurate-hocon = { module = "org.spongepowered:configurate-hocon", version.ref = "configurate" }
 configurate-gson = { module = "org.spongepowered:configurate-gson", version.ref = "configurate" }
 configurate-extra-kotlin = { module = "org.spongepowered:configurate-extra-kotlin", version.ref = "configurate" }
 
@@ -65,6 +66,7 @@ log4j = [
 configurate = [
     "configurate-yaml",
     "configurate-gson",
+    "configurate-hocon",
     "configurate-extra-kotlin"
 ]
 night-config = [
